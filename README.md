@@ -24,7 +24,7 @@ Current process:
 
 ## Typical usage
 
-From the `julia/` directory:
+From the VariantPrioritiser.jl directory:
 
 ```bash
 julia --project=. bin/prioritise.jl \
@@ -38,8 +38,6 @@ Positional sample arguments keep the historical ordering:
 
 - trio: `MOTHER FATHER PROBAND`
 - singleton: `PROBAND`
-
-If the path does not contain `rNN`, pass `--pipeline-prefix r04`.
 
 ## Manual family specification
 
@@ -109,24 +107,9 @@ Behavior is similar to trio, except:
 
 ### Other affected / unaffected family structures
 
-These are handled as cosegregation analyses:
+Extended trios (i.e. trio + additional affected/unaffected individuals) are processed the same as trios but with additional filtering on variants such that they have to segregate with disease.
+
+Other non-standard families are handled as cosegregation analyses:
 
 - variants must be present in all affected samples
-- unaffected samples are used as exclusions
-- report output includes a `Segregating Variants` box
-
-## Report features
-
-HTML output includes:
-
-- sample cards with sample comments and QC
-- relatedness / parent-child validation
-- contamination and homozygosity summaries
-- OMIM / PanelApp annotations
-- imprinted-gene flagging
-- ROH overlap marking for prioritised homozygous variants
-- section-level `Copy Table` buttons
-- persistent `Assessed` checkboxes using browser `localStorage`
-- full-row highlight when marked as assessed
-
-Use `--html` for HTML output and `--tsv` for tabular output.
+- unaffected samples are used as exclusions.
