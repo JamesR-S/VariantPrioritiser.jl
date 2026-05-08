@@ -155,7 +155,11 @@ function variant_section_html(category::String, rows::Vector{Dict{String,Any}}, 
     table_headers = variant_table_headers(headers, family, rows)
     section_title = isnothing(title) ? pretty_category(category) : title
     table_id = category * "_table"
-    table = ["<section class=\"panel category-section\" id=\"" * html_escape(category) * "\"><div class=\"section-head\"><div><h2>" * html_escape(section_title) * "</h2><span class=\"pill\">" * string(length(rows)) * " variants</span></div><button type=\"button\" class=\"copy-button\" data-table-id=\"" * html_escape(table_id) * "\">Copy Table</button></div>"]
+    impact_filter = "IMPACT" in table_headers
+    controls = impact_filter ?
+        "<label class=\"impact-filter\"><span>Impact</span><select class=\"impact-filter-select\" data-table-id=\"" * html_escape(table_id) * "\"><option value=\"\">All</option><option value=\"HIGH\">HIGH</option><option value=\"MODERATE\">MODERATE</option><option value=\"LOW\">LOW</option><option value=\"MODIFIER\">MODIFIER</option><option value=\"__blank__\">Blank</option></select></label>" :
+        ""
+    table = ["<section class=\"panel category-section\" id=\"" * html_escape(category) * "\"><div class=\"section-head\"><div><h2>" * html_escape(section_title) * "</h2><span class=\"pill\" data-table-count=\"" * html_escape(table_id) * "\">" * string(length(rows)) * " variants</span></div><div class=\"section-controls\">" * controls * "<button type=\"button\" class=\"copy-button\" data-table-id=\"" * html_escape(table_id) * "\">Copy Table</button></div></div>"]
     push!(table, "<div class=\"table-wrap\"><table id=\"" * html_escape(table_id) * "\"><thead><tr>")
     push!(table, "<th>Assessed</th>")
     for header in table_headers
@@ -164,7 +168,8 @@ function variant_section_html(category::String, rows::Vector{Dict{String,Any}}, 
     push!(table, "</tr></thead><tbody>")
     for row in rows
         row_id = assessed_row_id(category, row)
-        push!(table, "<tr data-row-id=\"" * html_escape(row_id) * "\">")
+        row_impact = uppercase(string(get(row, "IMPACT", "")))
+        push!(table, "<tr data-row-id=\"" * html_escape(row_id) * "\" data-impact=\"" * html_escape(row_impact) * "\">")
         push!(table, "<td><input type=\"checkbox\" class=\"assessed-checkbox\" data-row-id=\"" * html_escape(row_id) * "\" aria-label=\"Mark variant assessed\"></td>")
         for header in table_headers
             push!(table, "<td>" * html_escape(display_value(row, header)) * "</td>")
@@ -663,8 +668,11 @@ h1,h2,h3{margin:0 0 10px} h1{font-size:48px;line-height:1} h2{font-size:28px} h3
 .category-card{text-decoration:none;color:inherit;display:flex;justify-content:space-between;align-items:center}
 .category-name{text-transform:capitalize}
 .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.section-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .copy-button{border:1px solid var(--line);background:linear-gradient(180deg,#fff,#f6ecdd);color:var(--ink);border-radius:999px;padding:10px 14px;font:600 12px/1.2 Helvetica, Arial, sans-serif;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
 .copy-button:hover{border-color:var(--accent);color:var(--accent)}
+.impact-filter{display:flex;align-items:center;gap:8px;font:600 12px/1.2 Helvetica, Arial, sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.impact-filter-select{border:1px solid var(--line);background:#fffdfa;border-radius:999px;padding:9px 12px;color:var(--ink);font:600 12px/1.2 Helvetica, Arial, sans-serif}
 .pill{font:600 12px/1.2 Helvetica, Arial, sans-serif;padding:8px 10px;border-radius:999px;background:#e6f4f1;color:var(--accent)}
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px}
 table{width:100%;border-collapse:collapse;background:#fffdfa}
@@ -741,9 +749,38 @@ function bindCopyButtons() {
   });
 }
 
+function updateVisibleCount(tableId) {
+  const table = document.getElementById(tableId);
+  const pill = document.querySelector('[data-table-count="' + tableId + '"]');
+  if (!table || !pill) return;
+  const visible = [...table.querySelectorAll("tbody tr")].filter((row) => row.style.display !== "none").length;
+  pill.textContent = visible + " variants";
+}
+
+function applyImpactFilter(tableId, selectedImpact) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  table.querySelectorAll("tbody tr").forEach((row) => {
+    const rowImpact = (row.dataset.impact || "").toUpperCase();
+    const show =
+      selectedImpact === "" ||
+      (selectedImpact === "__blank__" ? rowImpact === "" : rowImpact === selectedImpact);
+    row.style.display = show ? "" : "none";
+  });
+  updateVisibleCount(tableId);
+}
+
+function bindImpactFilters() {
+  document.querySelectorAll(".impact-filter-select").forEach((select) => {
+    applyImpactFilter(select.dataset.tableId, select.value);
+    select.addEventListener("change", () => applyImpactFilter(select.dataset.tableId, select.value));
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   applyAssessedState();
   bindCopyButtons();
+  bindImpactFilters();
 });
 </script>
 """
