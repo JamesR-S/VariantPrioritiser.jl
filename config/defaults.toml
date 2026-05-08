@@ -5,10 +5,10 @@ denovo_frequency_cutoff = 0.000001
 spliceai_cutoff = 0.5
 # DeepVariant/Glnexus quality scores are better calibrated than the historical
 # GATK-based pipeline, so the old very high GQ cutoffs are too strict here.
-gq_cutoff = 10.0
+gq_cutoff = 8.0
 gq_hom_cutoff = 5.0
 mq_cutoff = -10.0
-min_alt_reads = 4
+min_alt_reads = 2
 min_denovo_read_fraction = 0.1
 splice_acceptor_window = 50
 splice_donor_window = 10
@@ -17,34 +17,33 @@ gene_distance_cutoff = 2000
 manta_gq_cutoff = 20.0
 manta_min_total_alt_support = 8
 manta_min_sr_alt_support = 2
-manta_min_parent_alt_support = 2
 manta_min_size = 50
 
 [resources]
 gtf = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/gencode.v49.annotation.gtf"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/gencode.v49.annotation.gtf"
 ]
 omim_morbid = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/morbidmap.txt"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/morbidmap.txt"
 ]
 omim_mim2gene = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/mim2gene.txt"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/mim2gene.txt"
 ]
 omim_ensg_to_hgnc = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/ensg_to_hgnc.csv"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/ensg_to_hgnc.csv"
 ]
 panelapp_genes = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/panelapp_genes.tsv"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/panelapp_genes.tsv"
 ]
 sample_comments = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/sample_details.tsv"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/sample_details.tsv"
 ]
 imprinted_genes = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/list"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/list"
 ]
 excluded_variants_diag = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/diagnostic_artefacts.tsv"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/diagnostic_artefacts.tsv"
 ]
 excluded_genes_diag = [
-  "/Users/j.russ-silsby/Library/CloudStorage/OneDrive-UniversityofExeter/Documents/spreadsheet tool/testresources/diagnostic_exclude_genes.tsv"
+  "/ennis/home/jr1019/WGS_trio_reports/resources/diagnostic_exclude_genes.tsv"
 ]
