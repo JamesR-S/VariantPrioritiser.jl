@@ -21,29 +21,29 @@ manta_min_size = 50
 
 [resources]
 gtf = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/gencode.v49.annotation.gtf"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/gencode.v49.annotation.gtf"
 ]
 omim_morbid = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/morbidmap.txt"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/morbidmap.txt"
 ]
 omim_mim2gene = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/mim2gene.txt"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/mim2gene.txt"
 ]
 omim_ensg_to_hgnc = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/ensg_to_hgnc.csv"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/ensg_to_hgnc.csv"
 ]
 panelapp_genes = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/panelapp_genes.tsv"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/panelapp_genes.tsv"
 ]
 sample_comments = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/sample_details.tsv"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/sample_details.tsv"
 ]
 imprinted_genes = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/list"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/list"
 ]
 excluded_variants_diag = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/diagnostic_artefacts.tsv"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/diagnostic_artefacts.tsv"
 ]
 excluded_genes_diag = [
-  "/ennis/home/jr1019/WGS_trio_reports/resources/diagnostic_exclude_genes.tsv"
+  "/ennis/projects/Research_Project-MRC147594/resources/grch38-v2-pipeline/julia_prioritisation_app/resources/diagnostic_exclude_genes.tsv"
 ]
