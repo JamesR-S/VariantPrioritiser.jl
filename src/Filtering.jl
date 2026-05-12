@@ -216,6 +216,7 @@ function row_max_frequency(row::Dict{String,Any})
         parse_float(get(row, "GnomAD_v4_1_AF_popmax", "")),
         parse_float(get(row, "GnomAD_v4_1_AF_all", "")),
         parse_float(get(row, "gnomadAltFreq_all", "")),
+        parse_float(get(row, "AllofUs250k_gvs_max_af", "")),
     ]
     filtered = [value for value in values if !isnan(value)]
     isempty(filtered) && return 0.0

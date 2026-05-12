@@ -387,7 +387,7 @@ end
 
 function load_contamination!(qc::Dict{String,SampleQc}, metrics_dir::AbstractString)
     for sample in keys(qc)
-        path = joinpath(metrics_dir, string(sample, "_cleanCall_small.csv"))
+        path = joinpath(metrics_dir, string(sample, "_cleanCall.csv"))
         isfile(path) || continue
         lines = readlines(path)
         length(lines) < 2 && continue
@@ -725,6 +725,34 @@ function applyAssessedState() {
   });
 }
 
+function setCopyButtonState(button, label) {
+  if (!button) return;
+  const original = button.dataset.originalLabel || button.textContent;
+  button.dataset.originalLabel = original;
+  button.textContent = label;
+  setTimeout(() => {
+    button.textContent = button.dataset.originalLabel || original;
+  }, 1200);
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-1000px";
+  textarea.style.left = "-1000px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  try {
+    return document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 function copyTable(tableId, button) {
   const table = document.getElementById(tableId);
   if (!table) return;
@@ -735,12 +763,24 @@ function copyTable(tableId, button) {
       .map((cell) => cell.innerText.replace(/\\t/g, " ").replace(/\\n/g, " ").trim())
       .join("\\t");
   });
-  navigator.clipboard.writeText(rows.join("\\n")).then(() => {
-    if (!button) return;
-    const original = button.textContent;
-    button.textContent = "Copied";
-    setTimeout(() => button.textContent = original, 1200);
-  });
+  const text = rows.join("\\n");
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyButtonState(button, "Copied");
+    }).catch(() => {
+      if (fallbackCopyText(text)) {
+        setCopyButtonState(button, "Copied");
+      } else {
+        setCopyButtonState(button, "Press Ctrl+C");
+      }
+    });
+    return;
+  }
+  if (fallbackCopyText(text)) {
+    setCopyButtonState(button, "Copied");
+  } else {
+    setCopyButtonState(button, "Press Ctrl+C");
+  }
 }
 
 function bindCopyButtons() {

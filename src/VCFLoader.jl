@@ -21,6 +21,7 @@ const PRIORITY_HEADERS = [
     "alleleFreq",
     "GnomAD_v4_1_AF_popmax",
     "GnomAD_v4_1_AF_all",
+    "AllofUs250k_gvs_max_af",
     "spliceai_max",
     "spliceai_summary",
     "Filter (VCF)",
@@ -262,6 +263,7 @@ function normalise_vcf_record(fields::AbstractVector{<:AbstractString}, sample_n
         row["MANE_PLUS_CLINICAL"] = get(csq_map, "MANE_PLUS_CLINICAL", "")
         row["GnomAD_v4_1_AF_all"] = first_nonempty(csq_map, ["GnomAD_v4_1_AF_all", "gnomADg_AF", "gnomadAltFreq_all"])
         row["GnomAD_v4_1_AF_popmax"] = first_nonempty(csq_map, ["GnomAD_v4_1_AF_popmax"])
+        row["AllofUs250k_gvs_max_af"] = alt_specific_value(info_map, "AllofUs250k_gvs_max_af", alt_number)
         row["GnomAD_v4_1_AC_all"] = get(csq_map, "GnomAD_v4_1_AC_all", "")
         row["GnomAD_v4_1_N_Hom_all"] = get(csq_map, "GnomAD_v4_1_N_Hom_all", "")
         spliceai_values = spliceai_scores(csq_map)
