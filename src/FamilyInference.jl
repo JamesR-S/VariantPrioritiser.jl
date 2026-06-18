@@ -15,19 +15,14 @@ function infer_family(family::FamilySpec, sample_names::Vector{String}, pipeline
     end
 
     if !isempty(family.affected) || !isnothing(family.parent1) || !isnothing(family.parent2)
-        return family
-    end
-
-    if !isnothing(family.parent1) && !isnothing(family.parent2)
-        affected = isempty(family.affected) ? [sample for sample in sample_names if sample != family.parent1 && sample != family.parent2 && !(sample in family.unaffected)] : family.affected
-        return FamilySpec(parent1=family.parent1, parent2=family.parent2, affected=affected, unaffected=copy(family.unaffected), shared=false)
+        return normalize_parent_order(family, pipeline_prefix, root_dir)
     end
 
     control_family = infer_family_from_control(sample_names, root_dir)
-    control_family !== nothing && return control_family
+    control_family !== nothing && return normalize_parent_order(control_family, pipeline_prefix, root_dir)
 
     if length(sample_names) == 2
-        return FamilySpec(parent1=sample_names[1], parent2=sample_names[2], unaffected=copy(family.unaffected), shared=false)
+        return normalize_parent_order(FamilySpec(parent1=sample_names[1], parent2=sample_names[2], unaffected=copy(family.unaffected), shared=false), pipeline_prefix, root_dir)
     end
 
     relatedness = load_relatedness(sample_names, something(pipeline_prefix, "r04"), root_dir)
@@ -35,13 +30,28 @@ function infer_family(family::FamilySpec, sample_names::Vector{String}, pipeline
     if inferred !== nothing
         parent1, parent2 = inferred
         affected = [sample for sample in sample_names if sample != parent1 && sample != parent2 && !(sample in family.unaffected)]
-        return FamilySpec(parent1=parent1, parent2=parent2, affected=affected, unaffected=copy(family.unaffected), shared=false)
+        return normalize_parent_order(FamilySpec(parent1=parent1, parent2=parent2, affected=affected, unaffected=copy(family.unaffected), shared=false), pipeline_prefix, root_dir)
     end
 
     if length(sample_names) >= 2
-        return FamilySpec(parent1=sample_names[1], parent2=sample_names[2], affected=sample_names[3:end], unaffected=copy(family.unaffected), shared=false)
+        return normalize_parent_order(FamilySpec(parent1=sample_names[1], parent2=sample_names[2], affected=sample_names[3:end], unaffected=copy(family.unaffected), shared=false), pipeline_prefix, root_dir)
     end
     return FamilySpec(affected=copy(sample_names), unaffected=copy(family.unaffected), shared=false)
+end
+
+function normalize_parent_order(family::FamilySpec, pipeline_prefix::Union{Nothing,String}, root_dir::AbstractString=pwd())
+    parent1 = family.parent1
+    parent2 = family.parent2
+    if isnothing(parent1) || isnothing(parent2)
+        return family
+    end
+    sample_sexes = load_sample_sexes([parent1, parent2], pipeline_prefix, root_dir)
+    sex1 = get(sample_sexes, parent1, "Unknown")
+    sex2 = get(sample_sexes, parent2, "Unknown")
+    if sex1 == "Male" && sex2 == "Female"
+        return FamilySpec(parent1=parent2, parent2=parent1, affected=copy(family.affected), unaffected=copy(family.unaffected), shared=family.shared)
+    end
+    return family
 end
 
 function infer_family_from_control(sample_names::Vector{String}, root_dir::AbstractString=pwd())
@@ -61,6 +71,23 @@ function infer_family_from_control(sample_names::Vector{String}, root_dir::Abstr
         end
     end
     return nothing
+end
+
+function load_sample_sexes(samples::Vector{String}, pipeline_prefix::Union{Nothing,String}, root_dir::AbstractString=pwd())
+    metrics_path = joinpath(root_dir, string(something(pipeline_prefix, "r04"), "_metrics"), "XY_coverage")
+    isfile(metrics_path) || return Dict{String,String}()
+    relevant = Set(samples)
+    sexes = Dict{String,String}()
+    open(metrics_path, "r") do io
+        for line in eachline(io)
+            split_line = split(chomp(line), '\t')
+            length(split_line) < 4 && continue
+            sample = split_line[1]
+            sample in relevant || continue
+            sexes[sample] = split_line[4]
+        end
+    end
+    return sexes
 end
 
 function load_relatedness(sample_names::Vector{String}, pipeline_prefix::String, root_dir::AbstractString=pwd())
