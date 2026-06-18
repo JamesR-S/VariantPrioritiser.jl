@@ -224,8 +224,8 @@ end
 
 Base.@kwdef mutable struct SampleQc
     sample::String = ""
-    gender::String = "Unknown"
-    abnormal_gender::Bool = false
+    sex::String = "Unknown"
+    abnormal_sex::Bool = false
     read_count::Union{Nothing,Int} = nothing
     read_count_is_raw::Bool = false
     mean_depth::Union{Nothing,Float64} = nothing
@@ -290,7 +290,7 @@ function sample_card_html(sample::String, sample_details::Dict{String,Vector{Str
     qc = get(sample_qc, sample, SampleQc(sample=sample))
     detail_list = join(["<li>" * html_escape(detail) * "</li>" for detail in details], "")
     qc_list = join(filter(!isempty, [
-        qc.gender == "Unknown" ? "" : "<li><strong>Gender:</strong> " * html_escape(qc.gender * (qc.abnormal_gender ? " (Abnormal)" : "")) * "</li>",
+        qc.sex == "Unknown" ? "" : "<li><strong>Sex:</strong> " * html_escape(qc.sex * (qc.abnormal_sex ? " (Abnormal)" : "")) * "</li>",
         isnothing(qc.read_count) ? "" : "<li><strong>Read count:</strong> " * string(qc.read_count) * (qc.read_count_is_raw ? " raw" : " dedup") * "</li>",
         isnothing(qc.mean_depth) ? "" : "<li><strong>Mean depth:</strong> " * string(round(qc.mean_depth, digits=1)) * "</li>",
         isnothing(qc.coverage20) ? "" : "<li><strong>Coverage @20X:</strong> " * string(round(qc.coverage20, digits=1)) * "%</li>",
@@ -345,10 +345,10 @@ function load_xy_coverage!(qc::Dict{String,SampleQc}, path::String)
             sample = get(qc, split_line[1], nothing)
             sample === nothing && continue
             if length(split_line) > 3
-                sample.gender = split_line[4]
+                sample.sex = split_line[4]
             end
             if length(split_line) > 4
-                sample.abnormal_gender = split_line[5] == "Abnormal"
+                sample.abnormal_sex = split_line[5] == "Abnormal"
             end
         end
     end
