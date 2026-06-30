@@ -11,7 +11,13 @@ function infer_family(family::FamilySpec, sample_names::Vector{String}, pipeline
     if family.shared
         affected = isempty(family.affected) ? copy(sample_names) : copy(family.affected)
         filter!(sample -> !(sample in family.unaffected), affected)
-        return FamilySpec(affected=affected, unaffected=copy(family.unaffected), shared=true)
+        return FamilySpec(
+            parent1_affected=family.parent1_affected,
+            parent2_affected=family.parent2_affected,
+            affected=affected,
+            unaffected=copy(family.unaffected),
+            shared=true,
+        )
     end
 
     if !isempty(family.affected) || !isnothing(family.parent1) || !isnothing(family.parent2)
@@ -22,7 +28,14 @@ function infer_family(family::FamilySpec, sample_names::Vector{String}, pipeline
     control_family !== nothing && return normalize_parent_order(control_family, pipeline_prefix, root_dir)
 
     if length(sample_names) == 2
-        return normalize_parent_order(FamilySpec(parent1=sample_names[1], parent2=sample_names[2], unaffected=copy(family.unaffected), shared=false), pipeline_prefix, root_dir)
+        return normalize_parent_order(FamilySpec(
+            parent1=sample_names[1],
+            parent2=sample_names[2],
+            parent1_affected=family.parent1_affected,
+            parent2_affected=family.parent2_affected,
+            unaffected=copy(family.unaffected),
+            shared=false,
+        ), pipeline_prefix, root_dir)
     end
 
     relatedness = load_relatedness(sample_names, something(pipeline_prefix, "r04"), root_dir)
@@ -30,13 +43,35 @@ function infer_family(family::FamilySpec, sample_names::Vector{String}, pipeline
     if inferred !== nothing
         parent1, parent2 = inferred
         affected = [sample for sample in sample_names if sample != parent1 && sample != parent2 && !(sample in family.unaffected)]
-        return normalize_parent_order(FamilySpec(parent1=parent1, parent2=parent2, affected=affected, unaffected=copy(family.unaffected), shared=false), pipeline_prefix, root_dir)
+        return normalize_parent_order(FamilySpec(
+            parent1=parent1,
+            parent2=parent2,
+            parent1_affected=family.parent1_affected,
+            parent2_affected=family.parent2_affected,
+            affected=affected,
+            unaffected=copy(family.unaffected),
+            shared=false,
+        ), pipeline_prefix, root_dir)
     end
 
     if length(sample_names) >= 2
-        return normalize_parent_order(FamilySpec(parent1=sample_names[1], parent2=sample_names[2], affected=sample_names[3:end], unaffected=copy(family.unaffected), shared=false), pipeline_prefix, root_dir)
+        return normalize_parent_order(FamilySpec(
+            parent1=sample_names[1],
+            parent2=sample_names[2],
+            parent1_affected=family.parent1_affected,
+            parent2_affected=family.parent2_affected,
+            affected=sample_names[3:end],
+            unaffected=copy(family.unaffected),
+            shared=false,
+        ), pipeline_prefix, root_dir)
     end
-    return FamilySpec(affected=copy(sample_names), unaffected=copy(family.unaffected), shared=false)
+    return FamilySpec(
+        parent1_affected=family.parent1_affected,
+        parent2_affected=family.parent2_affected,
+        affected=copy(sample_names),
+        unaffected=copy(family.unaffected),
+        shared=false,
+    )
 end
 
 function normalize_parent_order(family::FamilySpec, pipeline_prefix::Union{Nothing,String}, root_dir::AbstractString=pwd())
@@ -49,7 +84,15 @@ function normalize_parent_order(family::FamilySpec, pipeline_prefix::Union{Nothi
     sex1 = get(sample_sexes, parent1, "Unknown")
     sex2 = get(sample_sexes, parent2, "Unknown")
     if sex1 == "Male" && sex2 == "Female"
-        return FamilySpec(parent1=parent2, parent2=parent1, affected=copy(family.affected), unaffected=copy(family.unaffected), shared=family.shared)
+        return FamilySpec(
+            parent1=parent2,
+            parent2=parent1,
+            parent1_affected=family.parent2_affected,
+            parent2_affected=family.parent1_affected,
+            affected=copy(family.affected),
+            unaffected=copy(family.unaffected),
+            shared=family.shared,
+        )
     end
     return family
 end

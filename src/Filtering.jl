@@ -48,7 +48,7 @@ function prioritise_manta_row!(filtered::Vector{Dict{String,Any}}, row::Dict{Str
     push!(filtered, row)
 end
 
-function prioritisation_context(options::RunOptions, config::AppConfig)
+function prioritisation_context(options::RunOptions, config::AppConfig, family::FamilySpec)
     thresholds = config.thresholds
     root = batch_root(options.input, options.pipeline_prefix)
     return (
@@ -57,8 +57,8 @@ function prioritisation_context(options::RunOptions, config::AppConfig)
         gq_cutoff=something(options.gq_cutoff, thresholds.gq_cutoff),
         gq_hom_cutoff=something(options.gq_hom_cutoff, thresholds.gq_hom_cutoff),
         mq_cutoff=something(options.mq_cutoff, thresholds.mq_cutoff),
-        denovocnn_calls=load_denovocnn_calls(options.pipeline_prefix, root, denovocnn_proband(resolve_family(options))),
-        sample_sexes=load_sample_sexes(resolve_family(options), options.pipeline_prefix, root),
+        denovocnn_calls=load_denovocnn_calls(options.pipeline_prefix, root, denovocnn_proband(family)),
+        sample_sexes=load_sample_sexes(family, options.pipeline_prefix, root),
     )
 end
 
@@ -116,6 +116,17 @@ function passes_manta_quality_filter(row::Dict{String,Any}, family::FamilySpec, 
     sr_alt = sample_alt_support(row, proband, "SR")
     sr_alt >= thresholds.manta_min_sr_alt_support || return false
     (pr_alt + sr_alt) >= thresholds.manta_min_total_alt_support || return false
+    if dominant_cosegregation_mode(family)
+        for sample in dominant_affected_samples(family)
+            genotype_present(row, sample) || return false
+            passes_manta_parent_qc(row, sample, thresholds) || return false
+        end
+        for sample in dominant_unaffected_samples(family)
+            passes_manta_parent_qc(row, sample, thresholds) || return false
+            genotype_absent(row, sample) || return false
+        end
+        return true
+    end
     for parent in filter(!isnothing, [family.parent1, family.parent2])
         passes_manta_parent_qc(row, parent, thresholds) || return false
     end
@@ -284,6 +295,11 @@ function classify_manta_inheritance(row::Dict{String,Any}, family::FamilySpec)
     child = family.affected[1]
     child_state = genotype_state(row, child)
     child_state in (:het, :hom_alt) || return ""
+    if dominant_cosegregation_mode(family)
+        all(sample -> genotype_present(row, sample), dominant_affected_samples(family)) || return "uncertain"
+        all(sample -> genotype_absent(row, sample), dominant_unaffected_samples(family)) || return "uncertain"
+        return "cosegregating_dominant"
+    end
     if isnothing(family.parent1) || isnothing(family.parent2)
         return "present_in_proband"
     end
@@ -309,6 +325,7 @@ end
 
 function classify_family_model(row::Dict{String,Any}, family::FamilySpec, gq_cutoff::Float64, gq_hom_cutoff::Float64, denovocnn_calls::Set{String}, sample_sexes::Dict{String,String})
     family.shared && return classify_shared_variant(row, family)
+    dominant_cosegregation_mode(family) && return classify_dominant_cosegregating_variant(row, family)
     x_linked = classify_x_linked_variant(row, family, sample_sexes, gq_hom_cutoff)
     isempty(x_linked) || return x_linked
     if !isnothing(family.parent1) && !isnothing(family.parent2) && !isempty(family.affected)
@@ -332,6 +349,41 @@ end
 
 function known_parent_count(family::FamilySpec)
     return (!isnothing(family.parent1) ? 1 : 0) + (!isnothing(family.parent2) ? 1 : 0)
+end
+
+function is_parent1_affected(family::FamilySpec)
+    return !isnothing(family.parent1) && family.parent1_affected
+end
+
+function is_parent2_affected(family::FamilySpec)
+    return !isnothing(family.parent2) && family.parent2_affected
+end
+
+function affected_parent_count(family::FamilySpec)
+    return (is_parent1_affected(family) ? 1 : 0) + (is_parent2_affected(family) ? 1 : 0)
+end
+
+function dominant_cosegregation_mode(family::FamilySpec)
+    return !family.shared && affected_parent_count(family) > 0 && !isempty(family.affected)
+end
+
+function dominant_affected_samples(family::FamilySpec)
+    samples = copy(family.affected)
+    is_parent1_affected(family) && push!(samples, something(family.parent1, ""))
+    is_parent2_affected(family) && push!(samples, something(family.parent2, ""))
+    filter!(!isempty, samples)
+    unique!(samples)
+    return samples
+end
+
+function dominant_unaffected_samples(family::FamilySpec)
+    samples = String[]
+    (!isnothing(family.parent1) && !family.parent1_affected) && push!(samples, family.parent1)
+    (!isnothing(family.parent2) && !family.parent2_affected) && push!(samples, family.parent2)
+    append!(samples, collect(family.unaffected))
+    filter!(sample -> !(sample in dominant_affected_samples(family)), samples)
+    unique!(samples)
+    return samples
 end
 
 function known_parent(family::FamilySpec)
@@ -384,6 +436,15 @@ function classify_segregating_variant(row::Dict{String,Any}, family::FamilySpec)
     end
     all(state == :ref || state == :missing for state in unaffected_states) || return ""
     return "segregating_family_candidate"
+end
+
+function classify_dominant_cosegregating_variant(row::Dict{String,Any}, family::FamilySpec)
+    autosomal_or_x(row) || return ""
+    affected_samples = dominant_affected_samples(family)
+    isempty(affected_samples) && return ""
+    all(sample -> genotype_present(row, sample), affected_samples) || return ""
+    all(sample -> genotype_absent(row, sample), dominant_unaffected_samples(family)) || return ""
+    return "cosegregating_candidate"
 end
 
 function singleton_comphet_eligible(row::Dict{String,Any})
@@ -476,6 +537,16 @@ function genotype_state(row::Dict{String,Any}, sample::String)
     return :other
 end
 
+function genotype_present(row::Dict{String,Any}, sample::String)
+    state = genotype_state(row, sample)
+    return !(state in (:ref, :missing))
+end
+
+function genotype_absent(row::Dict{String,Any}, sample::String)
+    state = genotype_state(row, sample)
+    return state == :ref || state == :missing
+end
+
 function autosomal_or_x(row::Dict{String,Any})
     chrom = uppercase(normalise_chromosome(string(get(row, "chrom", ""))))
     return !(chrom in ("M", "MT"))
@@ -483,6 +554,7 @@ end
 
 function variant_sort_key(row::Dict{String,Any})
     category_rank = Dict(
+        "cosegregating_candidate" => 1,
         "de_novo_candidate" => 1,
         "recessive_homozygous_candidate" => 2,
         "x_linked_recessive_candidate" => 3,
@@ -509,6 +581,17 @@ end
 function postprocess_prioritised_rows(rows::Vector{Dict{String,Any}}, family::FamilySpec)
     collapsed = collapse_transcript_rows(rows)
     reclassified = Vector{Dict{String,Any}}()
+    if dominant_cosegregation_mode(family)
+        for row in collapsed
+            category = string(get(row, "candidateCategory", ""))
+            if !(category in ("cosegregating_candidate", "manta_deletion_candidate", "manta_duplication_candidate", "manta_insertion_candidate"))
+                continue
+            end
+            push!(reclassified, row)
+        end
+        sort!(reclassified, by=variant_sort_key)
+        return reclassified
+    end
     if !isnothing(singleton_sample(family)) && isnothing(family.parent1) && isnothing(family.parent2)
         singleton_comphet_genes = identify_singleton_possible_compound_heterozygous_genes(collapsed, family)
         for row in collapsed
@@ -661,6 +744,7 @@ function family_relevant_samples_for_filtering(family::FamilySpec)
 end
 
 function classify_x_linked_variant(row::Dict{String,Any}, family::FamilySpec, sample_sexes::Dict{String,String}, gq_hom_cutoff::Float64)
+    dominant_cosegregation_mode(family) && return ""
     chrom = uppercase(normalise_chromosome(string(get(row, "chrom", ""))))
     chrom == "X" || return ""
     isempty(family.affected) && return ""

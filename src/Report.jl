@@ -99,6 +99,7 @@ function report_sections(rows::Vector{Dict{String,Any}}, family::FamilySpec)
     sections = ReportSection[]
     push_section!(sections, "recessive_homozygous_candidate", "Homozygous Variants", [row for row in rows if string(get(row, "candidateCategory", "")) == "recessive_homozygous_candidate"])
     push_section!(sections, "x_linked_recessive_candidate", "X-Linked Variants", [row for row in rows if string(get(row, "candidateCategory", "")) == "x_linked_recessive_candidate"])
+    push_section!(sections, "cosegregating_candidate", "Cosegregating Variants", [row for row in rows if string(get(row, "candidateCategory", "")) == "cosegregating_candidate"])
     singleton_mode = !isnothing(singleton_sample(family)) && isnothing(family.parent1) && isnothing(family.parent2)
     one_parent_mode = known_parent_count(family) == 1 && length(family.affected) == 1
     comphet_title = singleton_mode || one_parent_mode ? "Variants Which Could Be Compound Heterozygous" : "Compound Heterozygous Variants"
@@ -125,10 +126,11 @@ end
 function family_summary_html(family::FamilySpec)
     lines = String[]
     !isempty(family.affected) && push!(lines, "<strong>Proband:</strong> " * html_escape(join(family.affected, ", ")))
-    !isnothing(family.parent1) && push!(lines, "<strong>Parent 1:</strong> " * html_escape(family.parent1))
-    !isnothing(family.parent2) && push!(lines, "<strong>Parent 2:</strong> " * html_escape(family.parent2))
+    !isnothing(family.parent1) && push!(lines, "<strong>Parent 1:</strong> " * html_escape(family.parent1 * (family.parent1_affected ? " (Affected)" : "")))
+    !isnothing(family.parent2) && push!(lines, "<strong>Parent 2:</strong> " * html_escape(family.parent2 * (family.parent2_affected ? " (Affected)" : "")))
     !isempty(family.unaffected) && push!(lines, "<strong>Unaffected:</strong> " * html_escape(join(collect(family.unaffected), ", ")))
     family.shared && push!(lines, "<strong>Mode:</strong> Shared-variant analysis")
+    dominant_cosegregation_mode(family) && push!(lines, "<strong>Mode:</strong> Dominant cosegregation analysis")
     return "<section class=\"panel summary\"><h2>Family Summary</h2><div class=\"summary-grid\">" * join(["<div class=\"summary-item\">$line</div>" for line in lines], "") * "</div></section>"
 end
 
@@ -594,8 +596,8 @@ function overlaps_roh(row::Dict{String,Any}, sample_qc::SampleQc)
 end
 
 function sample_role(sample::String, family::FamilySpec)
-    sample == family.parent1 && return "Parent 1"
-    sample == family.parent2 && return "Parent 2"
+    sample == family.parent1 && return family.parent1_affected ? "Parent 1 (Affected)" : "Parent 1"
+    sample == family.parent2 && return family.parent2_affected ? "Parent 2 (Affected)" : "Parent 2"
     sample in family.affected && return "Affected"
     sample in family.unaffected && return "Unaffected"
     return "Sample"

@@ -3,6 +3,8 @@ Base.@kwdef mutable struct RunOptions
     samples::Vector{String} = String[]
     parent1::Union{Nothing,String} = nothing
     parent2::Union{Nothing,String} = nothing
+    parent1_affected::Bool = false
+    parent2_affected::Bool = false
     affected::Vector{String} = String[]
     unaffected::Set{String} = Set{String}()
     extra_inputs::Vector{String} = String[]
@@ -29,6 +31,8 @@ end
 Base.@kwdef struct FamilySpec
     parent1::Union{Nothing,String} = nothing
     parent2::Union{Nothing,String} = nothing
+    parent1_affected::Bool = false
+    parent2_affected::Bool = false
     affected::Vector{String} = String[]
     unaffected::Set{String} = Set{String}()
     shared::Bool = false
@@ -98,6 +102,10 @@ function parse_cli(args::Vector{String})
         elseif arg == "--parent2"
             i += 1
             options.parent2 = args[i]
+        elseif arg == "--affected-parent1"
+            options.parent1_affected = true
+        elseif arg == "--affected-parent2"
+            options.parent2_affected = true
         elseif arg == "--affected"
             i += 1
             append!(options.affected, filter(!isempty, split(args[i], ',')))
@@ -151,6 +159,8 @@ function resolve_family(options::RunOptions)
         return FamilySpec(
             parent1=options.parent1,
             parent2=options.parent2,
+            parent1_affected=options.parent1_affected,
+            parent2_affected=options.parent2_affected,
             affected=copy(options.affected),
             unaffected=copy(options.unaffected),
             shared=options.shared,
@@ -161,6 +171,8 @@ function resolve_family(options::RunOptions)
             family = FamilySpec(
                 parent1=options.samples[1],
                 parent2=options.samples[2],
+                parent1_affected=options.parent1_affected,
+                parent2_affected=options.parent2_affected,
                 affected=length(options.samples) > 2 ? options.samples[3:end] : String[],
                 unaffected=copy(options.unaffected),
                 shared=options.shared,

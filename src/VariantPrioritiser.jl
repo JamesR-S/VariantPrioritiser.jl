@@ -54,7 +54,7 @@ function warn_skip_missing_optional(path::AbstractString)
 end
 
 function prioritise_inputs(options::RunOptions, config::AppConfig, family::FamilySpec, resolved_extra_inputs::Vector{String})
-    context = prioritisation_context(options, config)
+    context = prioritisation_context(options, config, family)
     filtered = Vector{Dict{String,Any}}()
     for path in [options.input; resolved_extra_inputs]
         if path != options.input && !isfile(path)
