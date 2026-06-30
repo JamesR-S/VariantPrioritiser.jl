@@ -24,7 +24,7 @@ Current process:
 
 ## Typical usage
 
-From the VariantPrioritiser.jl directory:
+From the `julia/` directory:
 
 ```bash
 julia --project=. bin/prioritise.jl \
@@ -39,6 +39,8 @@ Positional sample arguments keep the historical ordering:
 - trio: `MOTHER FATHER PROBAND`
 - singleton: `PROBAND`
 
+If the path does not contain `rNN`, pass `--pipeline-prefix r04`.
+
 ## Manual family specification
 
 For non-standard pedigrees, specify the family directly instead of relying on `control` / relatedness inference:
@@ -49,6 +51,7 @@ julia --project=. bin/prioritise.jl \
   --pipeline-prefix r04 \
   --parent1 MOTHER \
   --parent2 FATHER \
+  --affected-parent1 \
   --affected PROBAND,AFFECTED_RELATIVE \
   --unaffected-list UNAFFECTED_RELATIVE \
   batch/r04_vep/family_vep_annotated.vcf.gz
@@ -58,6 +61,8 @@ Available manual family options:
 
 - `--parent1 SAMPLE`
 - `--parent2 SAMPLE`
+- `--affected-parent1`
+- `--affected-parent2`
 - `--affected sample1,sample2,...`
 - `--unaffected-list sample3,sample4,...`
 
@@ -81,6 +86,24 @@ Notes:
 
 - de novo SNVs/indels are driven by intersection with `r04_denovocnn`
 - proband is shown first in the report and genotype columns
+- parents are assumed unaffected unless `--affected-parent1` and/or `--affected-parent2` is passed
+
+### Trio With One Or More Affected Parents
+
+Possible outputs:
+
+- `Cosegregating Variants`
+- `Variants In Imprinted Genes`
+- `Manta Deletions`
+- `Manta Duplications`
+- `Manta Insertions`
+
+Notes:
+
+- this switches the trio into dominant cosegregation mode
+- small variants must be present in all affected individuals and absent from unaffected individuals
+- sex-chromosome calls allow mixed heterozygous / hemizygous alternate genotypes across affected individuals
+- `Manta` CNVs are filtered the same way and show `cosegregating_dominant` in the inheritance column
 
 ### Singleton
 
@@ -107,9 +130,24 @@ Behavior is similar to trio, except:
 
 ### Other affected / unaffected family structures
 
-Extended trios (i.e. trio + additional affected/unaffected individuals) are processed the same as trios but with additional filtering on variants such that they have to segregate with disease.
-
-Other non-standard families are handled as cosegregation analyses:
+These are handled as cosegregation analyses:
 
 - variants must be present in all affected samples
-- unaffected samples are used as exclusions.
+- unaffected samples are used as exclusions
+- report output includes a `Segregating Variants` box
+
+## Report features
+
+HTML output includes:
+
+- sample cards with sample comments and QC
+- relatedness / parent-child validation
+- contamination and homozygosity summaries
+- OMIM / PanelApp annotations
+- imprinted-gene flagging
+- ROH overlap marking for prioritised homozygous variants
+- section-level `Copy Table` buttons
+- persistent `Assessed` checkboxes using browser `localStorage`
+- full-row highlight when marked as assessed
+
+Use `--html` for HTML output and `--tsv` for tabular output.
