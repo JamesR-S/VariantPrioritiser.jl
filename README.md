@@ -30,6 +30,7 @@ From the `julia/` directory:
 julia --project=. bin/prioritise.jl \
   --html \
   --pipeline-prefix r04 \
+  --out /path/to/output.html \
   ../testbatchtrio/r04_vep/WG0501-WG0502-WG0503_vep_annotated.vcf.gz \
   WG0502 WG0503 WG0501
 ```
@@ -49,6 +50,7 @@ For non-standard pedigrees, specify the family directly instead of relying on `c
 julia --project=. bin/prioritise.jl \
   --html \
   --pipeline-prefix r04 \
+  --out /path/to/output.html \
   --parent1 MOTHER \
   --parent2 FATHER \
   --affected-parent1 \
