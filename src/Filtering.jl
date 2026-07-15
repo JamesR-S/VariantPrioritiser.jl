@@ -116,34 +116,13 @@ function passes_manta_quality_filter(row::Dict{String,Any}, family::FamilySpec, 
     sr_alt = sample_alt_support(row, proband, "SR")
     sr_alt >= thresholds.manta_min_sr_alt_support || return false
     (pr_alt + sr_alt) >= thresholds.manta_min_total_alt_support || return false
-    if dominant_cosegregation_mode(family)
-        for sample in dominant_affected_samples(family)
-            genotype_present(row, sample) || return false
-            passes_manta_parent_qc(row, sample, thresholds) || return false
-        end
-        for sample in dominant_unaffected_samples(family)
-            passes_manta_parent_qc(row, sample, thresholds) || return false
-            genotype_absent(row, sample) || return false
-        end
+    if string(get(row, "analysis_mode", "")) == "singleton"
         return true
     end
-    for parent in filter(!isnothing, [family.parent1, family.parent2])
-        passes_manta_parent_qc(row, parent, thresholds) || return false
+    for sample in manta_relevant_samples(family)
+        passes_manta_parent_qc(row, sample, thresholds) || return false
     end
-    if !isnothing(family.parent1) && !isnothing(family.parent2)
-        p1 = genotype_state(row, family.parent1)
-        p2 = genotype_state(row, family.parent2)
-        p1 == :hom_alt && return false
-        p2 == :hom_alt && return false
-        if child_state == :het
-            p1 == :ref || return false
-            p2 == :ref || return false
-        elseif child_state == :hom_alt
-            p1 == :het || return false
-            p2 == :het || return false
-        end
-    end
-    return true
+    return !isempty(manta_segregation_model(row, family))
 end
 
 function passes_manta_parent_qc(row::Dict{String,Any}, parent::String, thresholds::ThresholdConfig)
@@ -295,35 +274,34 @@ end
 
 function classify_manta_inheritance(row::Dict{String,Any}, family::FamilySpec)
     isempty(family.affected) && return ""
-    child = family.affected[1]
-    child_state = genotype_state(row, child)
-    child_state in (:het, :hom_alt) || return ""
-    if dominant_cosegregation_mode(family)
-        all(sample -> genotype_present(row, sample), dominant_affected_samples(family)) || return "uncertain"
-        all(sample -> genotype_absent(row, sample), dominant_unaffected_samples(family)) || return "uncertain"
-        return "cosegregating_dominant"
-    end
-    if isnothing(family.parent1) || isnothing(family.parent2)
+    if string(get(row, "analysis_mode", "")) == "singleton"
+        child = family.affected[1]
+        child_state = genotype_state(row, child)
+        child_state in (:het, :hom_alt) || return ""
         return "present_in_proband"
     end
-    p1 = genotype_state(row, family.parent1)
-    p2 = genotype_state(row, family.parent2)
-    p1_ft = uppercase(string(get(row, "FT ($(family.parent1))", "")))
-    p2_ft = uppercase(string(get(row, "FT ($(family.parent2))", "")))
-    p1_pass = p1_ft == "PASS"
-    p2_pass = p2_ft == "PASS"
-    if p1 == :ref && p2 == :ref && p1_pass && p2_pass
-        return "apparent_de_novo"
-    elseif child_state == :het
-        return "filtered_non_denovo_het"
-    elseif (p1 in (:het, :hom_alt)) && p2 == :ref && p1_pass
-        return "maternal"
-    elseif (p2 in (:het, :hom_alt)) && p1 == :ref && p2_pass
-        return "paternal"
-    elseif (p1 in (:het, :hom_alt)) && (p2 in (:het, :hom_alt)) && p1_pass && p2_pass
-        return "biparental"
-    end
+    model = manta_segregation_model(row, family)
+    model == "heterozygous_segregating" && return "heterozygous_segregating"
+    model == "homozygous_segregating" && return "homozygous_or_hemizygous_segregating"
     return "uncertain"
+end
+
+function manta_relevant_samples(family::FamilySpec)
+    samples = copy(dominant_affected_samples(family))
+    append!(samples, dominant_unaffected_samples(family))
+    unique!(samples)
+    return samples
+end
+
+function manta_segregation_model(row::Dict{String,Any}, family::FamilySpec)
+    affected_samples = dominant_affected_samples(family)
+    unaffected_samples = dominant_unaffected_samples(family)
+    isempty(affected_samples) && return ""
+    all(sample -> genotype_state(row, sample) == :het, affected_samples) &&
+        all(sample -> genotype_absent(row, sample), unaffected_samples) && return "heterozygous_segregating"
+    all(sample -> genotype_state(row, sample) == :hom_alt, affected_samples) &&
+        all(sample -> genotype_state(row, sample) == :het, unaffected_samples) && return "homozygous_segregating"
+    return ""
 end
 
 function classify_family_model(row::Dict{String,Any}, family::FamilySpec, gq_cutoff::Float64, gq_hom_cutoff::Float64, denovocnn_calls::Set{String}, sample_sexes::Dict{String,String}, thresholds::ThresholdConfig)
