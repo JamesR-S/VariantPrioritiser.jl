@@ -377,6 +377,8 @@ function classify_variant(consequence::AbstractString, ref::AbstractString, alt:
         "3'UTR"
     elseif occursin("5_prime_UTR_variant", consequence)
         "5'UTR"
+    elseif occursin("non_coding_transcript_variant", consequence)
+        "noncoding transcript"
     elseif occursin("intron_variant", consequence)
         "intron"
     elseif occursin("upstream_gene_variant", consequence)
