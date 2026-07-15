@@ -256,6 +256,7 @@ function normalise_vcf_record(fields::AbstractVector{<:AbstractString}, sample_n
         row["clinVarPhenotypes"] = get(csq_map, "ClinVar_CLNDN", "")
         row["geneId"] = replace(get(csq_map, "HGNC_ID", ""), "HGNC:" => "")
         row["gene"] = get(csq_map, "SYMBOL", "")
+        row["biotype"] = get(csq_map, "BIOTYPE", "")
         row["distNearestSS"] = normalise_splice_distance(get(csq_map, "SpliceDistance", ""))
         row["protein"] = get(csq_map, "ENSP", "")
         row["transcript"] = get(csq_map, "Feature_type", "") == "Transcript" ? get(csq_map, "Feature", "") : ""

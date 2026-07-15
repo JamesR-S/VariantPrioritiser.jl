@@ -785,17 +785,39 @@ function identify_singleton_possible_compound_heterozygous_genes(rows::Vector{Di
 end
 
 function collapse_transcript_rows(rows::Vector{Dict{String,Any}})
-    grouped = Dict{Tuple{String,String},Dict{String,Any}}()
+    grouped = Dict{Tuple{String,String},Vector{Dict{String,Any}}}()
     for row in rows
         key = (string(get(row, "gene", "")), row_variant_key(row))
-        current = get(grouped, key, nothing)
-        if current === nothing || transcript_priority(row) > transcript_priority(current)
-            grouped[key] = row
-        elseif transcript_priority(row) == transcript_priority(current) && consequence_rank(row) < consequence_rank(current)
-            grouped[key] = row
+        push!(get!(grouped, key, Vector{Dict{String,Any}}()), row)
+    end
+    collapsed = Vector{Dict{String,Any}}()
+    for group_rows in values(grouped)
+        selected = select_preferred_transcript_row(group_rows)
+        selected === nothing || push!(collapsed, selected)
+    end
+    return collapsed
+end
+
+function select_preferred_transcript_row(rows::Vector{Dict{String,Any}})
+    isempty(rows) && return nothing
+    eligible_rows = has_mane_select_row(rows) ? [row for row in rows if has_mane_select(row)] : rows
+    best = eligible_rows[1]
+    for row in eligible_rows[2:end]
+        if transcript_priority(row) > transcript_priority(best)
+            best = row
+        elseif transcript_priority(row) == transcript_priority(best) && consequence_rank(row) < consequence_rank(best)
+            best = row
         end
     end
-    return collect(values(grouped))
+    return best
+end
+
+function has_mane_select_row(rows::Vector{Dict{String,Any}})
+    return any(has_mane_select, rows)
+end
+
+function has_mane_select(row::Dict{String,Any})
+    return !isempty(string(get(row, "MANE_SELECT", "")))
 end
 
 function transcript_priority(row::Dict{String,Any})
