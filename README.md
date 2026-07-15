@@ -153,3 +153,12 @@ HTML output includes:
 - full-row highlight when marked as assessed
 
 Use `--html` for HTML output and `--tsv` for tabular output.
+
+## Config
+
+Small-variant exon filtering is controlled in `config/defaults.toml` under `[thresholds]`:
+
+- `protein_coding_only = true`: keep only protein-coding / splice-driven small variants
+- `protein_coding_only = false`: also keep noncoding exon variants, including `5'UTR`, `3'UTR`, and `non_coding_transcript_exon_variant`
+
+This setting applies to the short-variant prioritisation paths such as homozygous, compound heterozygous, imprinted-gene, and cosegregating outputs. `de novo` calls still depend on the existing `denovocnn` gate.

@@ -190,7 +190,7 @@ function variant_table_headers(headers::Vector{String}, family::FamilySpec, rows
 end
 
 function small_variant_table_headers(headers::Vector{String}, family::FamilySpec)
-    selected = ["gene", "omim_annotations", "panelapp_status", "panelapp_phenotypes", "transcript", "IMPACT", "Consequence", "gNomen", "cNomen", "pNomen", "MANE_SELECT", "GnomAD_v4_1_AF_all", "GnomAD_v4_1_AF_popmax", "spliceai_summary", "clinVarClinSignifs", "imprinting_status", "roh_overlap"]
+    selected = ["gene", "omim_annotations", "panelapp_status", "panelapp_phenotypes", "transcript", "IMPACT", "Consequence", "gNomen", "cNomen", "pNomen", "MANE_SELECT", "GnomAD_v4_1_AF_all", "GnomAD_v4_1_AF_popmax", "AllofUs250k_gvs_all_af", "spliceai_summary", "clinVarClinSignifs", "imprinting_status", "roh_overlap"]
     sample_headers = String[]
     for sample in report_sample_names(headers_to_samples(headers), family)
         append!(sample_headers, ["GT ($sample)", "AD ($sample)", "GQ ($sample)"])
@@ -216,7 +216,7 @@ end
 
 function display_value(row::Dict{String,Any}, header::String)
     value = get(row, header, "")
-    if header == "GnomAD_v4_1_AF_all"
+    if header in ("GnomAD_v4_1_AF_all", "GnomAD_v4_1_AF_popmax", "AllofUs250k_gvs_all_af", "AllofUs250k_gvs_max_af")
         parsed = tryparse(Float64, string(value))
         parsed === nothing && return string(value)
         return parsed == 0 ? "0" : string(round(parsed, sigdigits=3))

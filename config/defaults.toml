@@ -2,6 +2,7 @@
 frequency_cutoff = 0.0001
 homozygous_frequency_cutoff = 0.0001
 denovo_frequency_cutoff = 0.000001
+protein_coding_only = false
 spliceai_cutoff = 0.5
 # DeepVariant/Glnexus quality scores are better calibrated than the historical
 # GATK-based pipeline, so the old very high GQ cutoffs are too strict here.

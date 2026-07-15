@@ -177,8 +177,8 @@ function is_interesting_variant(row::Dict{String,Any}, include_extended_splice::
     if coding_effect == "synonymous" || var_location == "intron"
         return has_spliceai_support(row, thresholds)
     end
-    if var_location == "exon" && isempty(coding_effect)
-        return false
+    if !thresholds.protein_coding_only && is_noncoding_exonic_variant(row)
+        return true
     end
     return false
 end
@@ -227,6 +227,7 @@ function row_max_frequency(row::Dict{String,Any})
         parse_float(get(row, "GnomAD_v4_1_AF_popmax", "")),
         parse_float(get(row, "GnomAD_v4_1_AF_all", "")),
         parse_float(get(row, "gnomadAltFreq_all", "")),
+        parse_float(get(row, "AllofUs250k_gvs_all_af", "")),
         parse_float(get(row, "AllofUs250k_gvs_max_af", "")),
     ]
     filtered = [value for value in values if !isnan(value)]
@@ -571,6 +572,13 @@ end
 
 function is_protein_altering(coding_effect::AbstractString)
     return coding_effect in ("start loss", "stop gain", "stop loss", "frameshift", "in-frame", "missense", "protein-altering")
+end
+
+function is_noncoding_exonic_variant(row::Dict{String,Any})
+    var_location = string(get(row, "varLocation", ""))
+    consequence = lowercase(string(get(row, "Consequence", "")))
+    var_location in ("exon", "3'UTR", "5'UTR") && return true
+    return occursin("non_coding_transcript_exon_variant", consequence)
 end
 
 function has_spliceai_support(row::Dict{String,Any}, thresholds::ThresholdConfig)

@@ -4,6 +4,7 @@ Base.@kwdef struct ThresholdConfig
     frequency_cutoff::Float64 = 0.001
     homozygous_frequency_cutoff::Float64 = 0.01
     denovo_frequency_cutoff::Float64 = 0.0001
+    protein_coding_only::Bool = false
     spliceai_cutoff::Float64 = 0.5
     gq_cutoff::Float64 = 10.0
     gq_hom_cutoff::Float64 = 5.0
@@ -48,6 +49,7 @@ function load_config(path::Union{Nothing,String})
             frequency_cutoff=Float64(get(thresholds, "frequency_cutoff", 0.001)),
             homozygous_frequency_cutoff=Float64(get(thresholds, "homozygous_frequency_cutoff", 0.01)),
             denovo_frequency_cutoff=Float64(get(thresholds, "denovo_frequency_cutoff", 0.0001)),
+            protein_coding_only=Bool(get(thresholds, "protein_coding_only", false)),
             spliceai_cutoff=Float64(get(thresholds, "spliceai_cutoff", 0.5)),
             gq_cutoff=Float64(get(thresholds, "gq_cutoff", 10.0)),
             gq_hom_cutoff=Float64(get(thresholds, "gq_hom_cutoff", 5.0)),
