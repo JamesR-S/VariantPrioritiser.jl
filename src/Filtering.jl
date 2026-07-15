@@ -19,7 +19,7 @@ function prioritise_row!(filtered::Vector{Dict{String,Any}}, row::Dict{String,An
     is_denovocnn_hit = row_variant_key(row) in denovocnn_calls
     row["__is_denovocnn_hit__"] = is_denovocnn_hit
     passes_gene_filters(row, options, thresholds) || return
-    category = classify_family_model(row, family, gq_cutoff, gq_hom_cutoff, denovocnn_calls, sample_sexes)
+    category = classify_family_model(row, family, gq_cutoff, gq_hom_cutoff, denovocnn_calls, sample_sexes, thresholds)
     isempty(category) && return
     if !is_denovocnn_hit || category == "recessive_homozygous_candidate"
         passes_quality_filter(row, options.lowq, mq_cutoff) || return
@@ -164,6 +164,8 @@ function is_interesting_variant(row::Dict{String,Any}, include_extended_splice::
     var_location = string(get(row, "varLocation", ""))
     coding_effect = string(get(row, "codingEffect", ""))
     if impact in ("HIGH", "MODERATE")
+        return true
+    elseif !thresholds.protein_coding_only && impact in ("LOW", "MODIFIER") && is_noncoding_exonic_variant(row)
         return true
     elseif impact in ("LOW", "MODIFIER")
         return has_spliceai_support(row, thresholds)
@@ -324,7 +326,7 @@ function classify_manta_inheritance(row::Dict{String,Any}, family::FamilySpec)
     return "uncertain"
 end
 
-function classify_family_model(row::Dict{String,Any}, family::FamilySpec, gq_cutoff::Float64, gq_hom_cutoff::Float64, denovocnn_calls::Set{String}, sample_sexes::Dict{String,String})
+function classify_family_model(row::Dict{String,Any}, family::FamilySpec, gq_cutoff::Float64, gq_hom_cutoff::Float64, denovocnn_calls::Set{String}, sample_sexes::Dict{String,String}, thresholds::ThresholdConfig)
     family.shared && return classify_shared_variant(row, family)
     dominant_cosegregation_mode(family) && return classify_dominant_cosegregating_variant(row, family)
     x_linked = classify_x_linked_variant(row, family, sample_sexes, gq_hom_cutoff)
@@ -337,7 +339,7 @@ function classify_family_model(row::Dict{String,Any}, family::FamilySpec, gq_cut
     elseif !isempty(family.affected) && (length(family.affected) > 1 || !isempty(family.unaffected))
         return classify_segregating_variant(row, family)
     elseif !isnothing(singleton_sample(family))
-        return classify_singleton_variant(row, singleton_sample(family), gq_cutoff, gq_hom_cutoff)
+        return classify_singleton_variant(row, singleton_sample(family), gq_cutoff, gq_hom_cutoff, thresholds)
     elseif !isempty(family.affected)
         return classify_shared_variant(row, family)
     elseif !isnothing(family.parent1) && !isnothing(family.parent2)
@@ -395,13 +397,13 @@ function singleton_sample(family::FamilySpec)
     return length(family.affected) == 1 ? family.affected[1] : nothing
 end
 
-function classify_singleton_variant(row::Dict{String,Any}, sample::String, gq_cutoff::Float64, gq_hom_cutoff::Float64)
+function classify_singleton_variant(row::Dict{String,Any}, sample::String, gq_cutoff::Float64, gq_hom_cutoff::Float64, thresholds::ThresholdConfig)
     autosomal_or_x(row) || return ""
     state = genotype_state(row, sample)
     gq = parse_float(get(row, "GQ ($sample)", ""))
     if state == :hom_alt && gq >= gq_hom_cutoff
         return "recessive_homozygous_candidate"
-    elseif state == :het && gq >= gq_cutoff && singleton_comphet_eligible(row)
+    elseif state == :het && gq >= gq_cutoff && singleton_comphet_eligible(row, thresholds)
         return "singleton_possible_compound_heterozygous_component"
     end
     return ""
@@ -448,11 +450,13 @@ function classify_dominant_cosegregating_variant(row::Dict{String,Any}, family::
     return "cosegregating_candidate"
 end
 
-function singleton_comphet_eligible(row::Dict{String,Any})
+function singleton_comphet_eligible(row::Dict{String,Any}, thresholds::ThresholdConfig)
     consequence = lowercase(string(get(row, "Consequence", "")))
     impact = uppercase(string(get(row, "IMPACT", "")))
     coding_effect = string(get(row, "codingEffect", ""))
     if impact in ("HIGH", "MODERATE")
+        return true
+    elseif !thresholds.protein_coding_only && impact in ("LOW", "MODIFIER") && is_noncoding_exonic_variant(row)
         return true
     elseif impact in ("LOW", "MODIFIER")
         return false
