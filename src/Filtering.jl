@@ -559,8 +559,8 @@ end
 function is_noncoding_exonic_variant(row::Dict{String,Any})
     var_location = string(get(row, "varLocation", ""))
     consequence = lowercase(string(get(row, "Consequence", "")))
-    var_location in ("exon", "3'UTR", "5'UTR") && return true
-    return occursin("non_coding_transcript_exon_variant", consequence)
+    var_location in ("exon", "3'UTR", "5'UTR", "noncoding transcript") && return true
+    return occursin("non_coding_transcript_exon_variant", consequence) || occursin("non_coding_transcript_variant", consequence)
 end
 
 function has_spliceai_support(row::Dict{String,Any}, thresholds::ThresholdConfig)
