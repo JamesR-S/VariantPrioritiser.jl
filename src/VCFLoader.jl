@@ -296,7 +296,7 @@ function normalise_vcf_record(fields::AbstractVector{<:AbstractString}, sample_n
         apply_sample_fields!(row, sample_names, sample_fields, format_keys, alt_number)
         push!(rows, row)
     end
-    return rows
+    return retain_preferred_transcript_rows(rows)
 end
 
 function parse_info_field(text::AbstractString)
@@ -503,4 +503,21 @@ function append_missing!(target::Vector{String}, values::AbstractVector{<:Abstra
         string_value in target || push!(target, string_value)
     end
     return target
+end
+
+function retain_preferred_transcript_rows(rows::Vector{Dict{String,Any}})
+    grouped = Dict{String,Vector{Dict{String,Any}}}()
+    for row in rows
+        gene = string(get(row, "gene", ""))
+        push!(get!(grouped, gene, Vector{Dict{String,Any}}()), row)
+    end
+    selected = Vector{Dict{String,Any}}()
+    for group_rows in values(grouped)
+        if any(row -> !isempty(string(get(row, "MANE_SELECT", ""))), group_rows)
+            append!(selected, [row for row in group_rows if !isempty(string(get(row, "MANE_SELECT", "")))])
+        else
+            append!(selected, group_rows)
+        end
+    end
+    return selected
 end
