@@ -112,6 +112,7 @@ Notes:
 Possible outputs:
 
 - `Homozygous Variants`
+- `Heterozygous Variants` (when `--include-singleton-hets` or `include_singleton_hets = true` is enabled)
 - `Variants Which Could Be Compound Heterozygous`
 - `Variants In Imprinted Genes`
 - `Manta Deletions`
@@ -122,6 +123,24 @@ Notes:
 - no de novo box
 - no phased compound-het claim; this box means `2+` coding or canonical splice variants in the same gene
 - singleton `Manta` is intentionally stricter and excludes duplications
+
+By default, heterozygous small variants must form a possible compound-heterozygous
+pair to be retained. Use `--include-singleton-hets` to also include heterozygous
+candidates without a second qualifying variant in the same gene:
+
+```bash
+julia --project=. bin/prioritise.jl \
+  --include-singleton-hets \
+  --html \
+  --out singleton.prioritised.html \
+  input.vcf.gz PROBAND
+```
+
+Additional candidates appear in **Heterozygous Variants**. Possible
+compound-heterozygous pairs retain their existing section. Quality, frequency,
+gene and consequence filters still apply, as do `-recessive` and `-denovo`.
+This option applies to singleton small variants; trio and other family analyses
+are unaffected.
 
 ### One known parent plus proband
 
@@ -162,3 +181,15 @@ Small-variant exon filtering is controlled in `config/defaults.toml` under `[thr
 - `protein_coding_only = false`: also keep noncoding exon variants, including `5'UTR`, `3'UTR`, and `non_coding_transcript_exon_variant`
 
 This setting applies to the short-variant prioritisation paths such as homozygous, compound heterozygous, imprinted-gene, and cosegregating outputs. `de novo` calls still depend on the existing `denovocnn` gate.
+
+To enable singleton heterozygous candidates through configuration, set this key in
+the existing `[thresholds]` section of `config/defaults.toml` or a custom config:
+
+```toml
+[thresholds]
+include_singleton_hets = true
+```
+
+`include_singleton_hets` defaults to `false`. Pass `--config /path/to/config.toml`
+to use a custom config. The CLI flag `--include-singleton-hets` enables inclusion
+even when the config setting is `false`.

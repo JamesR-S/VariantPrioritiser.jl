@@ -74,11 +74,11 @@ function prioritise_inputs(options::RunOptions, config::AppConfig, family::Famil
         else
             rows, _, _ = load_input(path; debug=options.debug)
             for row in rows
-                prioritise_row!(filtered, row, family, options, context.thresholds, context.freq_cutoff, context.gq_cutoff, context.gq_hom_cutoff, context.mq_cutoff, context.denovocnn_calls)
+                prioritise_row!(filtered, row, family, options, context.thresholds, context.freq_cutoff, context.gq_cutoff, context.gq_hom_cutoff, context.mq_cutoff, context.denovocnn_calls, context.sample_sexes)
             end
         end
     end
-    return postprocess_prioritised_rows(filtered, family)
+    return postprocess_prioritised_rows(filtered, family; include_singleton_hets=options.include_singleton_hets || config.thresholds.include_singleton_hets)
 end
 
 end

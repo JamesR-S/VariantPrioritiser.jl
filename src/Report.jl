@@ -100,6 +100,7 @@ function report_sections(rows::Vector{Dict{String,Any}}, family::FamilySpec)
     push_section!(sections, "recessive_homozygous_candidate", "Homozygous Variants", [row for row in rows if string(get(row, "candidateCategory", "")) == "recessive_homozygous_candidate"])
     push_section!(sections, "x_linked_recessive_candidate", "X-Linked Variants", [row for row in rows if string(get(row, "candidateCategory", "")) == "x_linked_recessive_candidate"])
     push_section!(sections, "cosegregating_candidate", "Cosegregating Variants", [row for row in rows if string(get(row, "candidateCategory", "")) == "cosegregating_candidate"])
+    push_section!(sections, "singleton_heterozygous_candidate", "Heterozygous Variants", [row for row in rows if string(get(row, "candidateCategory", "")) == "singleton_heterozygous_candidate"])
     singleton_mode = !isnothing(singleton_sample(family)) && isnothing(family.parent1) && isnothing(family.parent2)
     one_parent_mode = known_parent_count(family) == 1 && length(family.affected) == 1
     comphet_title = singleton_mode || one_parent_mode ? "Variants Which Could Be Compound Heterozygous" : "Compound Heterozygous Variants"

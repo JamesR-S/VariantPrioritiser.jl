@@ -12,14 +12,14 @@ function prioritise_rows(rows::Vector{Dict{String,Any}}, family::FamilySpec, opt
     for row in rows
         prioritise_row!(filtered, row, family, options, thresholds, freq_cutoff, gq_cutoff, gq_hom_cutoff, mq_cutoff, denovocnn_calls, sample_sexes)
     end
-    return postprocess_prioritised_rows(filtered, family)
+    return postprocess_prioritised_rows(filtered, family; include_singleton_hets=options.include_singleton_hets || config.thresholds.include_singleton_hets)
 end
 
 function prioritise_row!(filtered::Vector{Dict{String,Any}}, row::Dict{String,Any}, family::FamilySpec, options::RunOptions, thresholds::ThresholdConfig, freq_cutoff::Float64, gq_cutoff::Float64, gq_hom_cutoff::Float64, mq_cutoff::Float64, denovocnn_calls::Set{String}, sample_sexes::Dict{String,String})
     is_denovocnn_hit = row_variant_key(row) in denovocnn_calls
     row["__is_denovocnn_hit__"] = is_denovocnn_hit
     passes_gene_filters(row, options, thresholds) || return
-    category = classify_family_model(row, family, gq_cutoff, gq_hom_cutoff, denovocnn_calls, sample_sexes, thresholds)
+    category = classify_family_model(row, family, gq_cutoff, gq_hom_cutoff, denovocnn_calls, sample_sexes, thresholds; include_singleton_hets=options.include_singleton_hets || thresholds.include_singleton_hets)
     isempty(category) && return
     if !is_denovocnn_hit || category == "recessive_homozygous_candidate"
         passes_quality_filter(row, options.lowq, mq_cutoff) || return
@@ -304,7 +304,7 @@ function manta_segregation_model(row::Dict{String,Any}, family::FamilySpec)
     return ""
 end
 
-function classify_family_model(row::Dict{String,Any}, family::FamilySpec, gq_cutoff::Float64, gq_hom_cutoff::Float64, denovocnn_calls::Set{String}, sample_sexes::Dict{String,String}, thresholds::ThresholdConfig)
+function classify_family_model(row::Dict{String,Any}, family::FamilySpec, gq_cutoff::Float64, gq_hom_cutoff::Float64, denovocnn_calls::Set{String}, sample_sexes::Dict{String,String}, thresholds::ThresholdConfig; include_singleton_hets::Bool=thresholds.include_singleton_hets)
     family.shared && return classify_shared_variant(row, family)
     dominant_cosegregation_mode(family) && return classify_dominant_cosegregating_variant(row, family)
     x_linked = classify_x_linked_variant(row, family, sample_sexes, gq_hom_cutoff)
@@ -317,7 +317,7 @@ function classify_family_model(row::Dict{String,Any}, family::FamilySpec, gq_cut
     elseif !isempty(family.affected) && (length(family.affected) > 1 || !isempty(family.unaffected))
         return classify_segregating_variant(row, family)
     elseif !isnothing(singleton_sample(family))
-        return classify_singleton_variant(row, singleton_sample(family), gq_cutoff, gq_hom_cutoff, thresholds)
+        return classify_singleton_variant(row, singleton_sample(family), gq_cutoff, gq_hom_cutoff, thresholds; include_singleton_hets=include_singleton_hets)
     elseif !isempty(family.affected)
         return classify_shared_variant(row, family)
     elseif !isnothing(family.parent1) && !isnothing(family.parent2)
@@ -375,7 +375,7 @@ function singleton_sample(family::FamilySpec)
     return length(family.affected) == 1 ? family.affected[1] : nothing
 end
 
-function classify_singleton_variant(row::Dict{String,Any}, sample::String, gq_cutoff::Float64, gq_hom_cutoff::Float64, thresholds::ThresholdConfig)
+function classify_singleton_variant(row::Dict{String,Any}, sample::String, gq_cutoff::Float64, gq_hom_cutoff::Float64, thresholds::ThresholdConfig; include_singleton_hets::Bool=thresholds.include_singleton_hets)
     autosomal_or_x(row) || return ""
     state = genotype_state(row, sample)
     gq = parse_float(get(row, "GQ ($sample)", ""))
@@ -383,6 +383,8 @@ function classify_singleton_variant(row::Dict{String,Any}, sample::String, gq_cu
         return "recessive_homozygous_candidate"
     elseif state == :het && gq >= gq_cutoff && singleton_comphet_eligible(row, thresholds)
         return "singleton_possible_compound_heterozygous_component"
+    elseif state == :het && gq >= gq_cutoff && include_singleton_hets
+        return "singleton_heterozygous_candidate"
     end
     return ""
 end
@@ -568,7 +570,7 @@ function has_spliceai_support(row::Dict{String,Any}, thresholds::ThresholdConfig
     return !isnan(spliceai_max) && spliceai_max >= thresholds.spliceai_cutoff
 end
 
-function postprocess_prioritised_rows(rows::Vector{Dict{String,Any}}, family::FamilySpec)
+function postprocess_prioritised_rows(rows::Vector{Dict{String,Any}}, family::FamilySpec; include_singleton_hets::Bool=false)
     collapsed = collapse_transcript_rows(rows)
     reclassified = Vector{Dict{String,Any}}()
     if dominant_cosegregation_mode(family)
@@ -587,8 +589,15 @@ function postprocess_prioritised_rows(rows::Vector{Dict{String,Any}}, family::Fa
         for row in collapsed
             category = string(get(row, "candidateCategory", ""))
             if category == "singleton_possible_compound_heterozygous_component"
-                string(get(row, "gene", "")) in singleton_comphet_genes || continue
-                row["candidateCategory"] = "singleton_possible_compound_heterozygous_candidate"
+                if string(get(row, "gene", "")) in singleton_comphet_genes
+                    row["candidateCategory"] = "singleton_possible_compound_heterozygous_candidate"
+                elseif include_singleton_hets
+                    row["candidateCategory"] = "singleton_heterozygous_candidate"
+                else
+                    continue
+                end
+            elseif category == "singleton_heterozygous_candidate"
+                include_singleton_hets || continue
             elseif !(category in ("recessive_homozygous_candidate", "x_linked_recessive_candidate", "manta_deletion_candidate", "manta_insertion_candidate"))
                 continue
             end

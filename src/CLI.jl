@@ -17,6 +17,7 @@ Base.@kwdef mutable struct RunOptions
     gq_hom_cutoff::Union{Nothing,Float64} = nothing
     mq_cutoff::Union{Nothing,Float64} = nothing
     min_alt_reads::Union{Nothing,Int} = nothing
+    include_singleton_hets::Bool = false
     splice::Bool = false
     shared::Bool = false
     recessive_only::Bool = false
@@ -45,7 +46,9 @@ function parse_cli(args::Vector{String})
     i = 1
     while i <= length(args)
         arg = args[i]
-        if arg == "-splice"
+        if arg == "--include-singleton-hets"
+            options.include_singleton_hets = true
+        elseif arg == "-splice"
             options.splice = true
         elseif arg == "-shared"
             options.shared = true
