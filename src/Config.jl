@@ -6,7 +6,9 @@ Base.@kwdef struct ThresholdConfig
     denovo_frequency_cutoff::Float64 = 0.0001
     include_singleton_hets::Bool = false
     protein_coding_only::Bool = false
+    exeter_genomes_joint_af_cutoff::Float64 = 0.01
     spliceai_cutoff::Float64 = 0.5
+    alphagenome_splicing_cutoff::Float64 = 1.0
     gq_cutoff::Float64 = 10.0
     gq_hom_cutoff::Float64 = 5.0
     mq_cutoff::Float64 = -10.0
@@ -52,7 +54,9 @@ function load_config(path::Union{Nothing,String})
             denovo_frequency_cutoff=Float64(get(thresholds, "denovo_frequency_cutoff", 0.0001)),
             include_singleton_hets=Bool(get(thresholds, "include_singleton_hets", false)),
             protein_coding_only=Bool(get(thresholds, "protein_coding_only", false)),
-            spliceai_cutoff=Float64(get(thresholds, "spliceai_cutoff", 0.5)),
+            exeter_genomes_joint_af_cutoff=Float64(get(thresholds, "exeter_genomes_joint_af_cutoff", 0.01)),
+            spliceai_cutoff=Float64(get(thresholds, "spliceai_cutoff", 0.05)),
+            alphagenome_splicing_cutoff=Float64(get(thresholds, "alphagenome_splicing_cutoff", 1.0)),
             gq_cutoff=Float64(get(thresholds, "gq_cutoff", 10.0)),
             gq_hom_cutoff=Float64(get(thresholds, "gq_hom_cutoff", 5.0)),
             mq_cutoff=Float64(get(thresholds, "mq_cutoff", -10.0)),

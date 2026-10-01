@@ -23,6 +23,9 @@ const PRIORITY_HEADERS = [
     "GnomAD_v4_1_AF_all",
     "AllofUs250k_gvs_all_af",
     "AllofUs250k_gvs_max_af",
+    "Exeter_Genomes_Joint_AF",
+    "AlphaGenome_PHRED",
+    "AlphaGenome_splicing",
     "spliceai_max",
     "spliceai_summary",
     "Filter (VCF)",
@@ -272,6 +275,9 @@ function normalise_vcf_record(fields::AbstractVector{<:AbstractString}, sample_n
         ])
         row["GnomAD_v4_1_AC_all"] = get(csq_map, "GnomAD_v4_1_AC_all", "")
         row["GnomAD_v4_1_N_Hom_all"] = get(csq_map, "GnomAD_v4_1_N_Hom_all", "")
+        for field in ("Exeter_Genomes_Joint_AF", "AlphaGenome_PHRED", "AlphaGenome_splicing")
+            row[field] = get(csq_map, field, "")
+        end
         spliceai_values = spliceai_scores(csq_map)
         row["spliceai_max"] = string(maximum(spliceai_values))
         row["spliceai_summary"] = spliceai_summary(spliceai_values)

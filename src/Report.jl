@@ -191,7 +191,7 @@ function variant_table_headers(headers::Vector{String}, family::FamilySpec, rows
 end
 
 function small_variant_table_headers(headers::Vector{String}, family::FamilySpec)
-    selected = ["gene", "omim_annotations", "panelapp_status", "panelapp_phenotypes", "transcript", "IMPACT", "Consequence", "gNomen", "cNomen", "pNomen", "MANE_SELECT", "GnomAD_v4_1_AF_all", "GnomAD_v4_1_AF_popmax", "AllofUs250k_gvs_all_af", "spliceai_summary", "clinVarClinSignifs", "imprinting_status", "roh_overlap"]
+    selected = ["gene", "omim_annotations", "panelapp_status", "panelapp_phenotypes", "transcript", "IMPACT", "Consequence", "gNomen", "cNomen", "pNomen", "MANE_SELECT", "GnomAD_v4_1_AF_all", "GnomAD_v4_1_AF_popmax", "AllofUs250k_gvs_all_af", "Exeter_Genomes_Joint_AF", "AlphaGenome_PHRED", "AlphaGenome_splicing", "spliceai_summary", "clinVarClinSignifs", "imprinting_status", "roh_overlap"]
     sample_headers = String[]
     for sample in report_sample_names(headers_to_samples(headers), family)
         append!(sample_headers, ["GT ($sample)", "AD ($sample)", "GQ ($sample)"])

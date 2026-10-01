@@ -147,7 +147,7 @@ function is_interesting_variant(row::Dict{String,Any}, include_extended_splice::
     elseif !thresholds.protein_coding_only && impact in ("LOW", "MODIFIER") && is_noncoding_exonic_variant(row)
         return true
     elseif impact in ("LOW", "MODIFIER")
-        return has_spliceai_support(row, thresholds)
+        return has_splicing_support(row, thresholds)
     elseif !isempty(impact)
         return false
     end
@@ -156,7 +156,7 @@ function is_interesting_variant(row::Dict{String,Any}, include_extended_splice::
         return true
     end
     if coding_effect == "synonymous" || var_location == "intron"
-        return has_spliceai_support(row, thresholds)
+        return has_splicing_support(row, thresholds)
     end
     if !thresholds.protein_coding_only && is_noncoding_exonic_variant(row)
         return true
@@ -200,7 +200,9 @@ function passes_frequency_filter(row::Dict{String,Any}, category::String, freq_c
     else
         freq_cutoff
     end
-    return row_max_frequency(row) <= cutoff
+    exeter_af = parse_float(get(row, "Exeter_Genomes_Joint_AF", ""))
+    return row_max_frequency(row) <= cutoff &&
+           (isnan(exeter_af) || exeter_af < thresholds.exeter_genomes_joint_af_cutoff)
 end
 
 function row_max_frequency(row::Dict{String,Any})
@@ -565,9 +567,11 @@ function is_noncoding_exonic_variant(row::Dict{String,Any})
     return occursin("non_coding_transcript_exon_variant", consequence)
 end
 
-function has_spliceai_support(row::Dict{String,Any}, thresholds::ThresholdConfig)
+function has_splicing_support(row::Dict{String,Any}, thresholds::ThresholdConfig)
     spliceai_max = parse_float(get(row, "spliceai_max", ""))
-    return !isnan(spliceai_max) && spliceai_max >= thresholds.spliceai_cutoff
+    alphagenome_splicing = parse_float(get(row, "AlphaGenome_splicing", ""))
+    return (!isnan(spliceai_max) && spliceai_max > thresholds.spliceai_cutoff) ||
+           (!isnan(alphagenome_splicing) && alphagenome_splicing > thresholds.alphagenome_splicing_cutoff)
 end
 
 function postprocess_prioritised_rows(rows::Vector{Dict{String,Any}}, family::FamilySpec; include_singleton_hets::Bool=false)
@@ -845,7 +849,7 @@ function consequence_rank(row::Dict{String,Any})
         return 2
     elseif coding_effect == "missense" || coding_effect == "in-frame"
         return 3
-    elseif occursin("splice_", consequence) || has_spliceai_support(row, ThresholdConfig())
+    elseif occursin("splice_", consequence) || has_splicing_support(row, ThresholdConfig())
         return 4
     elseif coding_effect == "synonymous"
         return 5

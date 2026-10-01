@@ -5,7 +5,11 @@ denovo_frequency_cutoff = 0.000001
 # Include singleton heterozygous small variants without requiring a compound-het pair.
 include_singleton_hets = false
 protein_coding_only = false
+# Separate disease-cohort frequency limit (strictly less than).
+exeter_genomes_joint_af_cutoff = 0.01
+# Either splicing score must strictly exceed its threshold.
 spliceai_cutoff = 0.5
+alphagenome_splicing_cutoff = 1.0
 # DeepVariant/Glnexus quality scores are better calibrated than the historical
 # GATK-based pipeline, so the old very high GQ cutoffs are too strict here.
 gq_cutoff = 8.0
