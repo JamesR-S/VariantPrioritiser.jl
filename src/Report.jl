@@ -127,7 +127,7 @@ end
 
 function family_summary_html(family::FamilySpec)
     lines = String[]
-    !isempty(family.affected) && push!(lines, "<strong>Proband:</strong> " * html_escape(join(family.affected, ", ")))
+    !isempty(family.affected) && push!(lines, "<strong>Proband/Affected Siblings:</strong> " * html_escape(join(family.affected, ", ")))
     !isnothing(family.parent1) && push!(lines, "<strong>Parent 1:</strong> " * html_escape(family.parent1 * (family.parent1_affected ? " (Affected)" : "")))
     !isnothing(family.parent2) && push!(lines, "<strong>Parent 2:</strong> " * html_escape(family.parent2 * (family.parent2_affected ? " (Affected)" : "")))
     !isempty(family.unaffected) && push!(lines, "<strong>Unaffected:</strong> " * html_escape(join(collect(family.unaffected), ", ")))
