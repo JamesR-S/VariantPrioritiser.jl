@@ -1,3 +1,9 @@
+const MANTA_POPULATION_HEADERS = [
+    "gnomADv4_SV_SVTYPE", "gnomADv4_SV_EVIDENCE", "gnomADv4_SV_AF",
+    "gnomADv4_SV_AC", "gnomADv4_SV_AN", "gnomADv4_SV_N_HOMALT",
+    "Exeter_SV_AF", "Exeter_SV_AC", "Exeter_SV_AN",
+]
+
 function discover_manta_inputs(input_path::AbstractString, pipeline_prefix::Union{Nothing,String})
     prefix = something(pipeline_prefix, "r04")
     input_stem = replace(basename(String(input_path)), r"\.(vcf|vcf\.gz|tsv)$" => "")
@@ -104,6 +110,7 @@ function build_manta_headers(sample_names::Vector{<:AbstractString}, csq_headers
         "MANE_SELECT",
         "MANE_PLUS_CLINICAL",
     ]
+    append!(headers, MANTA_POPULATION_HEADERS)
     append!(headers, String.(csq_headers))
     for sample in sample_names
         append!(headers, ["GT ($sample)", "FT ($sample)", "GQ ($sample)", "PR ($sample)", "SR ($sample)"])
@@ -158,6 +165,10 @@ function normalise_manta_record(fields::AbstractVector{<:AbstractString}, sample
         row["Filter (VCF)"] = String(filter_field)
         row["Quality (VCF)"] = String(qual)
         row["inheritance_model"] = ""
+        for header in MANTA_POPULATION_HEADERS
+            value = get(info_map, header, "")
+            row[header] = value in ("", ".") ? get(csq_map, header, "") : value
+        end
         apply_manta_sample_fields!(row, sample_names, sample_fields, format_keys)
         push!(rows, row)
     end

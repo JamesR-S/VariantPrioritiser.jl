@@ -170,8 +170,11 @@ HTML output includes:
 - section-level `Copy Table` buttons
 - persistent `Assessed` checkboxes using browser `localStorage`
 - full-row highlight when marked as assessed
+- a Comments box at the end of every variant row
 
 Use `--html` for HTML output and `--tsv` for tabular output.
+
+Use **Save report** to save comments and assessed states into the HTML. In browsers supporting direct file saving (such as desktop Chrome and Edge), the dialog suggests the original filename. Select the original file on the first save to replace it; subsequent saves update the chosen file while the page stays open. The browser may remember the last save folder. An HTML page cannot automatically gain write access to its original directory, so you must select the destination on the first save and after reopening. Other browsers download a copy using the original filename, with the destination controlled by browser settings.
 
 ## Config
 
@@ -193,3 +196,4 @@ include_singleton_hets = true
 `include_singleton_hets` defaults to `false`. Pass `--config /path/to/config.toml`
 to use a custom config. The CLI flag `--include-singleton-hets` enables inclusion
 even when the config setting is `false`.
+

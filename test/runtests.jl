@@ -2,6 +2,8 @@ using Test
 include(joinpath(@__DIR__, "..", "src", "VariantPrioritiser.jl"))
 const VP = VariantPrioritiser
 
+include("manta_annotations.jl")
+
 @testset "Singleton heterozygous inclusion" begin
     family = VP.FamilySpec(affected=["child"])
     row = Dict{String,Any}("chrom" => "1", "inputPos" => "100", "inputRef" => "A",

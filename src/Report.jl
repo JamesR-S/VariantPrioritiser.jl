@@ -41,6 +41,7 @@ function write_html_report(path::String, rows::Vector{Dict{String,Any}}, headers
         println(io, stat_tile("Categories", string(length(sections))))
         println(io, stat_tile("Samples", string(length(ordered_samples))))
         println(io, "</div></section>")
+        println(io, "<section class=\"panel\"><button type=\"button\" class=\"save-report-button\">Save report</button><p>Save comments and assessed variants. Choose the original file on the first save to update it; subsequent saves reuse that file while this page stays open. Browsers without direct file saving download a copy.</p><p class=\"save-report-status\" role=\"status\" aria-live=\"polite\"></p></section>")
         println(io, family_summary_html(family))
         println(io, validation_panels_html(ordered_samples, sample_details, sample_qc, relatedness, family))
         println(io, category_summary_html(sections))
@@ -168,7 +169,7 @@ function variant_section_html(category::String, rows::Vector{Dict{String,Any}}, 
     for header in table_headers
         push!(table, "<th>" * html_escape(header) * "</th>")
     end
-    push!(table, "</tr></thead><tbody>")
+    push!(table, "<th>Comments</th></tr></thead><tbody>")
     for row in rows
         row_id = assessed_row_id(category, row)
         row_impact = uppercase(string(get(row, "IMPACT", "")))
@@ -177,6 +178,7 @@ function variant_section_html(category::String, rows::Vector{Dict{String,Any}}, 
         for header in table_headers
             push!(table, "<td>" * html_escape(display_value(row, header)) * "</td>")
         end
+        push!(table, "<td><textarea class=\"variant-comment\" rows=\"4\" aria-label=\"Variant comments\" placeholder=\"Add review comments…\"></textarea></td>")
         push!(table, "</tr>")
     end
     push!(table, "</tbody></table></div></section>")
@@ -205,6 +207,7 @@ end
 
 function sv_variant_table_headers(headers::Vector{String}, family::FamilySpec, rows::Vector{Dict{String,Any}})
     selected = ["gene", "omim_annotations", "panelapp_status", "panelapp_phenotypes", "svType", "SVLEN", "inheritance_model", "transcript", "IMPACT", "Consequence", "gNomen", "cNomen", "pNomen", "MANE_SELECT", "imprinting_status"]
+    append!(selected, MANTA_POPULATION_HEADERS)
     for sample in report_sample_names(headers_to_samples(headers), family)
         append!(selected, ["GT ($sample)", "FT ($sample)", "GQ ($sample)", "PR ($sample)", "SR ($sample)"])
     end
@@ -672,8 +675,8 @@ h1,h2,h3{margin:0 0 10px} h1{font-size:48px;line-height:1} h2{font-size:28px} h3
 .category-name{text-transform:capitalize}
 .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .section-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.copy-button{border:1px solid var(--line);background:linear-gradient(180deg,#fff,#f6ecdd);color:var(--ink);border-radius:999px;padding:10px 14px;font:600 12px/1.2 Helvetica, Arial, sans-serif;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
-.copy-button:hover{border-color:var(--accent);color:var(--accent)}
+.copy-button,.save-report-button{border:1px solid var(--line);background:linear-gradient(180deg,#fff,#f6ecdd);color:var(--ink);border-radius:999px;padding:10px 14px;font:600 12px/1.2 Helvetica, Arial, sans-serif;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+.copy-button:hover,.save-report-button:hover{border-color:var(--accent);color:var(--accent)}
 .impact-filter{display:flex;align-items:center;gap:8px;font:600 12px/1.2 Helvetica, Arial, sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .impact-filter-select{border:1px solid var(--line);background:#fffdfa;border-radius:999px;padding:9px 12px;color:var(--ink);font:600 12px/1.2 Helvetica, Arial, sans-serif}
 .pill{font:600 12px/1.2 Helvetica, Arial, sans-serif;padding:8px 10px;border-radius:999px;background:#e6f4f1;color:var(--accent)}
@@ -682,6 +685,7 @@ table{width:100%;border-collapse:collapse;background:#fffdfa}
 th,td{padding:10px 12px;border-bottom:1px solid #ece4d8;vertical-align:top}
 th{position:sticky;top:0;background:#f8f1e4;font:600 12px/1.2 Helvetica, Arial, sans-serif;letter-spacing:.04em;text-transform:uppercase;text-align:left}
 tr:nth-child(even) td{background:#fffcf6}
+.variant-comment{display:block;min-width:280px;width:100%;resize:vertical;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:14px/1.4 Helvetica,Arial,sans-serif}
 .assessed-checkbox{width:18px;height:18px;accent-color:var(--accent)}
 tr.assessed td{background:#dff3ec !important}
 tr.assessed:hover td{background:#d7efe7 !important}
@@ -704,15 +708,21 @@ function loadAssessedRows() {
 }
 
 function saveAssessedRows(state) {
-  localStorage.setItem(assessedStorageKey, JSON.stringify(state));
+  try {
+    localStorage.setItem(assessedStorageKey, JSON.stringify(state));
+  } catch (_) {
+    // Saved HTML still retains review state when browser storage is unavailable.
+  }
 }
 
 function applyAssessedState() {
   const state = loadAssessedRows();
   document.querySelectorAll(".assessed-checkbox").forEach((checkbox) => {
     const rowId = checkbox.dataset.rowId;
-    const checked = !!state[rowId];
+    const checked = document.documentElement.dataset.reviewSaved === "true"
+      ? checkbox.hasAttribute("checked") : !!state[rowId];
     checkbox.checked = checked;
+    checkbox.toggleAttribute("checked", checked);
     const row = checkbox.closest("tr");
     if (row) {
       row.classList.toggle("assessed", checked);
@@ -720,12 +730,15 @@ function applyAssessedState() {
     checkbox.addEventListener("change", () => {
       const next = loadAssessedRows();
       next[rowId] = checkbox.checked;
+      checkbox.toggleAttribute("checked", checkbox.checked);
       saveAssessedRows(next);
       if (row) {
         row.classList.toggle("assessed", checkbox.checked);
       }
     });
   });
+  // A saved DOM must use its embedded assessments when reopened.
+  document.documentElement.dataset.reviewSaved = "true";
 }
 
 function setCopyButtonState(button, label) {
@@ -763,7 +776,7 @@ function copyTable(tableId, button) {
     const cells = [...tr.querySelectorAll("th,td")];
     return cells
       .filter((cell, index) => index !== 0)
-      .map((cell) => cell.innerText.replace(/\\t/g, " ").replace(/\\n/g, " ").trim())
+      .map((cell) => (cell.querySelector("textarea")?.value ?? cell.innerText).replace(/\\t/g, " ").replace(/\\n/g, " ").trim())
       .join("\\t");
   });
   const text = rows.join("\\n");
@@ -820,10 +833,95 @@ function bindImpactFilters() {
   });
 }
 
+let reportFileHandle = null;
+
+function reportFilename() {
+  try {
+    return decodeURIComponent(location.pathname.split("/").pop()) || "report.html";
+  } catch (_) {
+    return "report.html";
+  }
+}
+
+function reportSnapshot() {
+  const snapshot = document.documentElement.cloneNode(true);
+  snapshot.dataset.reviewSaved = "true";
+  const comments = document.querySelectorAll(".variant-comment");
+  snapshot.querySelectorAll(".variant-comment").forEach((textarea, index) => {
+    textarea.textContent = comments[index].value;
+  });
+  const assessed = document.querySelectorAll(".assessed-checkbox");
+  snapshot.querySelectorAll(".assessed-checkbox").forEach((checkbox, index) => {
+    checkbox.toggleAttribute("checked", assessed[index].checked);
+  });
+  snapshot.querySelector(".save-report-button").disabled = false;
+  snapshot.querySelector(".save-report-status").textContent = "";
+  return new Blob(["<!doctype html>\\n", snapshot.outerHTML], {type: "text/html;charset=utf-8"});
+}
+
+function downloadReport(blob) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = reportFilename();
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function bindReportSaving() {
+  const button = document.querySelector(".save-report-button");
+  const status = document.querySelector(".save-report-status");
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    status.textContent = "";
+    try {
+      if (typeof window.showSaveFilePicker !== "function") {
+        downloadReport(reportSnapshot());
+        status.textContent = "Download requested. Choose the original folder to replace your report.";
+        return;
+      }
+      const handle = reportFileHandle || await window.showSaveFilePicker({
+        id: "variant-prioritiser-report",
+        suggestedName: reportFilename(),
+        types: [{description: "HTML report", accept: {"text/html": [".html", ".htm"]}}]
+      });
+      const blob = reportSnapshot();
+      const writable = await handle.createWritable();
+      try {
+        await writable.write(blob);
+        await writable.close();
+      } catch (error) {
+        try { await writable.abort(); } catch (_) {}
+        throw error;
+      }
+      reportFileHandle = handle;
+      status.textContent = "Saved to " + handle.name + ".";
+    } catch (error) {
+      status.textContent = error.name === "AbortError"
+        ? "Save cancelled. Your edits are still here."
+        : "Could not save: " + error.message + ". Click Save report to choose the file again.";
+      reportFileHandle = null;
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+function bindVariantComments() {
+  document.querySelectorAll(".variant-comment").forEach((textarea) => {
+    // Browser Save Page serializes the DOM, not the live textarea value.
+    textarea.addEventListener("input", () => { textarea.textContent = textarea.value; });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   applyAssessedState();
   bindCopyButtons();
   bindImpactFilters();
+  bindVariantComments();
+  bindReportSaving();
 });
 </script>
 """

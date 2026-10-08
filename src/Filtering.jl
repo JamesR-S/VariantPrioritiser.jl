@@ -41,11 +41,27 @@ function prioritise_manta_row!(filtered::Vector{Dict{String,Any}}, row::Dict{Str
     passes_manta_gene_filters(row, thresholds) || return
     passes_manta_quality_filter(row, family, thresholds) || return
     passes_manta_consequence_filter(row, thresholds) || return
+    frequency_category = manta_frequency_category(row, family)
+    freq_cutoff = something(options.freq_cutoff, thresholds.frequency_cutoff)
+    passes_frequency_filter(row, frequency_category, freq_cutoff, thresholds) || return
     category = classify_manta_category(row)
     isempty(category) && return
     row["candidateCategory"] = category
     row["inheritance_model"] = classify_manta_inheritance(row, family)
     push!(filtered, row)
+end
+
+function manta_frequency_category(row::Dict{String,Any}, family::FamilySpec)
+    isempty(family.affected) && return ""
+    child = first(family.affected)
+    genotype_state(row, child) == :hom_alt && return "recessive_homozygous_candidate"
+    if genotype_state(row, child) == :het &&
+       !isnothing(family.parent1) && !isnothing(family.parent2) &&
+       genotype_state(row, family.parent1) == :ref &&
+       genotype_state(row, family.parent2) == :ref
+        return "de_novo_candidate"
+    end
+    return "inherited_candidate"
 end
 
 function prioritisation_context(options::RunOptions, config::AppConfig, family::FamilySpec)
@@ -201,8 +217,10 @@ function passes_frequency_filter(row::Dict{String,Any}, category::String, freq_c
         freq_cutoff
     end
     exeter_af = parse_float(get(row, "Exeter_Genomes_Joint_AF", ""))
+    exeter_sv_afs = parse_float.(split(string(get(row, "Exeter_SV_AF", "")), r"[,&]"))
     return row_max_frequency(row) <= cutoff &&
-           (isnan(exeter_af) || exeter_af < thresholds.exeter_genomes_joint_af_cutoff)
+           (isnan(exeter_af) || exeter_af < thresholds.exeter_genomes_joint_af_cutoff) &&
+           all(af -> isnan(af) || af < thresholds.exeter_genomes_joint_af_cutoff, exeter_sv_afs)
 end
 
 function row_max_frequency(row::Dict{String,Any})
@@ -213,6 +231,9 @@ function row_max_frequency(row::Dict{String,Any})
         parse_float(get(row, "AllofUs250k_gvs_all_af", "")),
         parse_float(get(row, "AllofUs250k_gvs_max_af", "")),
     ]
+    # Multiple matching SV annotations can be comma-separated (INFO) or
+    # ampersand-separated (VEP CSQ). Keep the highest observed frequency.
+    append!(values, parse_float.(split(string(get(row, "gnomADv4_SV_AF", "")), r"[,&]")))
     filtered = [value for value in values if !isnan(value)]
     isempty(filtered) && return 0.0
     return maximum(filtered)
