@@ -41,13 +41,13 @@ function write_html_report(path::String, rows::Vector{Dict{String,Any}}, headers
         println(io, stat_tile("Categories", string(length(sections))))
         println(io, stat_tile("Samples", string(length(ordered_samples))))
         println(io, "</div></section>")
-        println(io, "<section class=\"panel\"><button type=\"button\" class=\"save-report-button\">Save report</button><p>Save comments and assessed variants. Choose the original file on the first save to update it; subsequent saves reuse that file while this page stays open. Browsers without direct file saving download a copy.</p><p class=\"save-report-status\" role=\"status\" aria-live=\"polite\"></p></section>")
         println(io, family_summary_html(family))
         println(io, validation_panels_html(ordered_samples, sample_details, sample_qc, relatedness, family))
         println(io, category_summary_html(sections))
         for section in sections
             println(io, variant_section_html(section.id, section.rows, headers, family, section.title))
         end
+        println(io, "<section class=\"panel\"><button type=\"button\" class=\"save-report-button\">Save report</button><p>Save comments and assessed variants. Choose the original file on the first save to update it; subsequent saves reuse that file while this page stays open. Browsers without direct file saving download a copy.</p><p class=\"save-report-status\" role=\"status\" aria-live=\"polite\"></p></section>")
         println(io, html_scripts())
         println(io, "</main></body></html>")
     end
