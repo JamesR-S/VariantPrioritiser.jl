@@ -3,6 +3,7 @@ include(joinpath(@__DIR__, "..", "src", "VariantPrioritiser.jl"))
 const VP = VariantPrioritiser
 
 include("manta_annotations.jl")
+include("manta_noncoding.jl")
 
 @testset "Singleton heterozygous inclusion" begin
     family = VP.FamilySpec(affected=["child"])

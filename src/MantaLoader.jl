@@ -69,7 +69,7 @@ function prepare_manta_stream(path::AbstractString)
     end
 end
 
-function stream_manta_rows(stream_state, callback::Function; debug::Bool=false)
+function stream_manta_rows(stream_state, callback::Function; debug::Bool=false, include_noncoding::Bool=false)
     io = stream_state.io
     try
         isempty(stream_state.csq_headers) && return
@@ -79,7 +79,7 @@ function stream_manta_rows(stream_state, callback::Function; debug::Bool=false)
             startswith(line, "#") && continue
             fields = split(line, '\t')
             length(fields) < 10 && continue
-            for row in normalise_manta_record(fields, stream_state.sample_names, stream_state.csq_headers, stream_state.path; debug=debug)
+            for row in normalise_manta_record(fields, stream_state.sample_names, stream_state.csq_headers, stream_state.path; debug=debug, include_noncoding=include_noncoding)
                 callback(row)
             end
         end
@@ -118,7 +118,7 @@ function build_manta_headers(sample_names::Vector{<:AbstractString}, csq_headers
     return unique(headers)
 end
 
-function normalise_manta_record(fields::AbstractVector{<:AbstractString}, sample_names::AbstractVector{<:AbstractString}, csq_headers::AbstractVector{<:AbstractString}, filename::AbstractString; debug::Bool=false)
+function normalise_manta_record(fields::AbstractVector{<:AbstractString}, sample_names::AbstractVector{<:AbstractString}, csq_headers::AbstractVector{<:AbstractString}, filename::AbstractString; debug::Bool=false, include_noncoding::Bool=false)
     chrom, pos, _, ref, alt, qual, filter_field, info_field, format_field = fields[1:9]
     sample_fields = fields[10:end]
     info_map = parse_info_field(info_field)
@@ -133,7 +133,7 @@ function normalise_manta_record(fields::AbstractVector{<:AbstractString}, sample
         length(csq_values) == length(csq_headers) || continue
         csq_map = Dict{String,String}(zip(csq_headers, csq_values))
         gene = get(csq_map, "SYMBOL", "")
-        isempty(gene) && continue
+        isempty(gene) && !include_noncoding && continue
         row = Dict{String,Any}()
         consequence = get(csq_map, "Consequence", "")
         var_location, coding_effect = classify_manta_consequence(consequence, sv_type)
@@ -212,6 +212,8 @@ function classify_manta_consequence(consequence::AbstractString, sv_type::Abstra
         return "exon", "feature_truncation"
     elseif any(term -> occursin("feature_elongation", term), terms)
         return "exon", "feature_elongation"
+    elseif "intergenic_variant" in terms
+        return "intergenic", ""
     elseif any(term -> occursin("intron_variant", term), terms)
         return "intron", "intronic"
     elseif any(term -> occursin("regulatory_region", term), terms)

@@ -197,3 +197,21 @@ include_singleton_hets = true
 to use a custom config. The CLI flag `--include-singleton-hets` enables inclusion
 even when the config setting is `false`.
 
+
+### Broader SV functional inclusion
+
+Add `--include-noncoding-svs` to include VEP-annotated non-coding and intergenic
+Manta SVs, including intronic, regulatory, UTR, and distant upstream/downstream
+consequences. This bypasses the Manta consequence/biotype filter and allows
+annotations without a gene symbol. The default functional filtering is unchanged.
+
+```bash
+julia --project=. bin/prioritise.jl --html --include-noncoding-svs input.vcf child
+```
+
+The flag retains gnomAD and Exeter frequency filters, quality/read-support and
+size thresholds, family segregation checks, and MUC/HLA exclusions. Supported
+SV types also stay the same: DEL/DUP/INS in families and DEL/INS in singletons.
+It does not change SNV filtering or include records lacking a valid VEP CSQ
+annotation. Intergenic rows have a blank gene column and retain their coordinates
+and consequence in the report.

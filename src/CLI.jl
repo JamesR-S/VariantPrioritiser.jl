@@ -18,6 +18,7 @@ Base.@kwdef mutable struct RunOptions
     mq_cutoff::Union{Nothing,Float64} = nothing
     min_alt_reads::Union{Nothing,Int} = nothing
     include_singleton_hets::Bool = false
+    include_noncoding_svs::Bool = false
     splice::Bool = false
     shared::Bool = false
     recessive_only::Bool = false
@@ -48,6 +49,8 @@ function parse_cli(args::Vector{String})
         arg = args[i]
         if arg == "--include-singleton-hets"
             options.include_singleton_hets = true
+        elseif arg == "--include-noncoding-svs"
+            options.include_noncoding_svs = true
         elseif arg == "-splice"
             options.splice = true
         elseif arg == "-shared"

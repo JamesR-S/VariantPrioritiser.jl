@@ -38,9 +38,9 @@ end
 
 function prioritise_manta_row!(filtered::Vector{Dict{String,Any}}, row::Dict{String,Any}, family::FamilySpec, options::RunOptions, thresholds::ThresholdConfig)
     row["analysis_mode"] = (!isnothing(singleton_sample(family)) && isnothing(family.parent1) && isnothing(family.parent2)) ? "singleton" : "family"
-    passes_manta_gene_filters(row, thresholds) || return
+    passes_manta_gene_filters(row, thresholds; allow_no_gene=options.include_noncoding_svs) || return
     passes_manta_quality_filter(row, family, thresholds) || return
-    passes_manta_consequence_filter(row, thresholds) || return
+    (options.include_noncoding_svs || passes_manta_consequence_filter(row, thresholds)) || return
     frequency_category = manta_frequency_category(row, family)
     freq_cutoff = something(options.freq_cutoff, thresholds.frequency_cutoff)
     passes_frequency_filter(row, frequency_category, freq_cutoff, thresholds) || return
@@ -94,9 +94,9 @@ function passes_gene_filters(row::Dict{String,Any}, options::RunOptions, thresho
     return true
 end
 
-function passes_manta_gene_filters(row::Dict{String,Any}, thresholds::ThresholdConfig)
+function passes_manta_gene_filters(row::Dict{String,Any}, thresholds::ThresholdConfig; allow_no_gene::Bool=false)
     gene = string(get(row, "gene", ""))
-    isempty(gene) && return false
+    isempty(gene) && !allow_no_gene && return false
     startswith(gene, "MUC") && return false
     startswith(gene, "HLA") && return false
     return true

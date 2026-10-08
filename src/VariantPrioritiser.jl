@@ -65,7 +65,7 @@ function prioritise_inputs(options::RunOptions, config::AppConfig, family::Famil
             _, _, stream_state = prepare_manta_stream(path)
             stream_manta_rows(stream_state, row -> begin
                 prioritise_manta_row!(filtered, row, family, options, context.thresholds)
-            end; debug=options.debug)
+            end; debug=options.debug, include_noncoding=options.include_noncoding_svs)
         elseif endswith(lowercase(path), ".vcf") || endswith(lowercase(path), ".vcf.gz")
             _, _, stream_state = prepare_vep_stream(path)
             stream_vep_rows(stream_state, row -> begin
